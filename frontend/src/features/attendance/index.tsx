@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AttendanceCamera } from "./components/AttendanceCamera";
@@ -93,10 +93,10 @@ export default function AttendancePage() {
 
 function Clock() {
   const [time, setTime] = useState(() => format(new Date(), "HH:mm:ss"));
-  useState(() => {
+  useEffect(() => {
     const interval = setInterval(() => setTime(format(new Date(), "HH:mm:ss")), 1000);
     return () => clearInterval(interval);
-  });
+  }, []);
   return <span className="font-mono text-lg font-bold text-white">{time}</span>;
 }
 
