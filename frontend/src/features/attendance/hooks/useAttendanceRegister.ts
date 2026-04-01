@@ -1,0 +1,18 @@
+import { useMutation } from "@tanstack/react-query";
+import { api } from "@/shared/lib/api";
+import type { AttendanceResponse } from "../types";
+
+interface RegisterPayload {
+  employee_id: string;
+  image_b64: string;
+  device_fingerprint?: string;
+}
+
+export function useAttendanceRegister() {
+  return useMutation<AttendanceResponse, Error, RegisterPayload>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post<AttendanceResponse>("/attendance", payload);
+      return data;
+    },
+  });
+}
