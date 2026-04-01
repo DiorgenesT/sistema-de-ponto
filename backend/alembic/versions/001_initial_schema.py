@@ -199,9 +199,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("NOW()")),
     )
     op.create_index(
-        "idx_attendance_employee_date",
+        "idx_attendance_employee_recorded_at",
         "attendance_records",
-        ["employee_id", sa.text("DATE(recorded_at)")],
+        ["employee_id", "recorded_at"],
     )
     op.create_index("idx_attendance_recorded_at", "attendance_records", ["recorded_at"])
 
