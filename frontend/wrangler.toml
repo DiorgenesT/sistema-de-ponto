@@ -1,0 +1,17 @@
+name = "sistema-ponto"
+account_id = "d2ba95e1ad712f466ec368a12aeaecd2"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Bindings de produção — configurar no dashboard Cloudflare Pages:
+# VITE_SUPABASE_URL = "https://xxx.supabase.co"
+# VITE_SUPABASE_ANON_KEY = "..."
+# VITE_API_URL = "https://api.ponto.empresa.com.br"
+
+# Redirecionamento SPA — todas as rotas → index.html
+# Criar arquivo _redirects em public/:
+#   /* /index.html 200

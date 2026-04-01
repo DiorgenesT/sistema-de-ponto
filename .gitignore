@@ -1,0 +1,45 @@
+# Secrets — NUNCA commitar
+.env
+*.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.venv/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.next/
+*.local
+
+# Cloudflare Workers
+.wrangler/
+worker-configuration.d.ts
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dados sensíveis
+*.pem
+*.key
+embeddings/
+facial_data/
+
+# Este arquivo não vai para o repositório
+CLAUDE.md
