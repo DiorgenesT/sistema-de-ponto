@@ -25,6 +25,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
     "python-multipart>=0.0.20",         # form data no FastAPI (login)
+    "email-validator>=2.0.0",           # pydantic EmailStr
     # Filas
     "celery[redis]>=5.4.0",
     "redis>=5.2.0",
