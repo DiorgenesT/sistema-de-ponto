@@ -52,9 +52,23 @@ class Settings(BaseSettings):
     # --- Sentry ---
     SENTRY_DSN: str = ""
 
+    # --- Email (notificações) ---
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@empresa.com"
+    SMTP_USE_TLS: bool = True
+    # Alternativa: SendGrid API Key (se definida, usa SendGrid em vez de SMTP)
+    SENDGRID_API_KEY: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.SENDGRID_API_KEY or self.SMTP_HOST)
 
 
 settings = Settings()  # type: ignore[call-arg]

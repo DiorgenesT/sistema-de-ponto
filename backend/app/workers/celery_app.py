@@ -38,6 +38,11 @@ celery_app.conf.update(
             "task": "app.workers.tasks.notifications.alert_expiring_hour_banks",
             "schedule": "0 8 * * *",
         },
+        # Alerta de saldo elevado (toda segunda às 7h)
+        "weekly-hour-bank-overflow-alert": {
+            "task": "app.workers.tasks.notifications.alert_overflow_hour_banks",
+            "schedule": "0 7 * * 1",
+        },
         # Sincronização NTP periódica
         "ntp-sync": {
             "task": "app.workers.tasks.hour_bank.ntp_sync",

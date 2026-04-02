@@ -91,6 +91,13 @@ class InsufficientPermissionsError(DomainException):
         super().__init__(message, "INSUFFICIENT_PERMISSIONS")
 
 
+class InvalidCredentialsError(DomainException):
+    http_status = status.HTTP_401_UNAUTHORIZED
+
+    def __init__(self, message: str = "Credenciais inválidas.") -> None:
+        super().__init__(message, "INVALID_CREDENTIALS")
+
+
 # --- Handler global registrado em main.py ---
 
 async def domain_exception_handler(request: Request, exc: DomainException) -> JSONResponse:

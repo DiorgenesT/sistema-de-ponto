@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, attendance, employees, devices, hour_bank, justifications, reports
+from app.api.v1.routes import auth, attendance, employees, devices, hour_bank, justifications, reports, schedules
 
 router = APIRouter()
 
@@ -11,3 +11,4 @@ router.include_router(devices.router,        prefix="/devices",        tags=["de
 router.include_router(hour_bank.router,      prefix="/hour-bank",      tags=["hour-bank"])
 router.include_router(justifications.router, prefix="/justifications", tags=["justifications"])
 router.include_router(reports.router,        prefix="/reports",        tags=["reports"])
+router.include_router(schedules.router,      prefix="/schedules",      tags=["schedules"])

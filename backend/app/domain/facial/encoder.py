@@ -9,9 +9,13 @@ from typing import Any
 
 import numpy as np
 import structlog
-from deepface import DeepFace
 
 log = structlog.get_logger(__name__)
+
+# Import lazy — DeepFace carrega TensorFlow que leva ~10s e não é necessário em testes unitários
+def _get_deepface():  # type: ignore[no-untyped-def]
+    from deepface import DeepFace
+    return DeepFace
 
 MODEL_NAME = "ArcFace"
 DETECTOR_BACKEND = "retinaface"
@@ -37,7 +41,7 @@ def extract_embedding_from_b64(image_b64: str) -> list[float]:
         image_bytes = base64.b64decode(image_b64)
         img_array = _bytes_to_array(image_bytes)
 
-        result = DeepFace.represent(
+        result = _get_deepface().represent(
             img_path=img_array,
             model_name=MODEL_NAME,
             detector_backend=DETECTOR_BACKEND,
