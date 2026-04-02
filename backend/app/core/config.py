@@ -1,8 +1,22 @@
+import json
 import secrets
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import AnyHttpUrl, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource, SettingsConfigDict
+
+
+class _FlexibleEnvSource(EnvSettingsSource):
+    """EnvSettingsSource que aceita listas tanto em JSON quanto separadas por vírgula."""
+
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        if isinstance(value, str) and not value.lstrip().startswith(("[", "{")):
+            # Tenta como CSV antes de tentar JSON
+            try:
+                return [v.strip() for v in value.split(",") if v.strip()]
+            except Exception:
+                pass
+        return super().decode_complex_value(field_name, field, value)
 
 
 class Settings(BaseSettings):
@@ -11,6 +25,22 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=True,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            _FlexibleEnvSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
 
     # --- App ---
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
@@ -21,7 +51,10 @@ class Settings(BaseSettings):
     @classmethod
     def parse_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
+            v = v.strip()
+            if v.startswith("["):
+                return json.loads(v)
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
     # --- Supabase ---
