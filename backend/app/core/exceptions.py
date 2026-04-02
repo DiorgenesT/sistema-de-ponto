@@ -28,7 +28,7 @@ class InvalidDeviceTokenError(DomainException):
 
 
 class FacialVerificationError(DomainException):
-    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def __init__(self, message: str = "Verificação facial falhou.", similarity: float = 0.0) -> None:
         self.similarity = similarity
@@ -36,7 +36,7 @@ class FacialVerificationError(DomainException):
 
 
 class FaceNotDetectedError(DomainException):
-    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def __init__(self, message: str = "Nenhum rosto detectado na imagem.") -> None:
         super().__init__(message, "FACE_NOT_DETECTED")
