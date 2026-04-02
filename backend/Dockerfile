@@ -7,18 +7,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxrender1 \
     libxext6 \
-    && rm -rf /var/lib/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Instalar uv
-RUN pip install --no-cache-dir uv
-
 COPY pyproject.toml .
-COPY uv.lock .
 
-# Instalar dependências no sistema (sem virtualenv)
-RUN uv sync --no-dev --system
+# Instalar dependências diretamente no Python do sistema
+RUN pip install --no-cache-dir -e ".[dev]" || pip install --no-cache-dir -e .
 
 COPY . .
 
