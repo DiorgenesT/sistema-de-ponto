@@ -20,7 +20,8 @@ from app.domain.hour_bank.calculator import (
 
 def make_record(record_type: RecordType, hour: int, minute: int = 0) -> AttendanceRecord:
     """Helper para criar registros de teste."""
-    record = AttendanceRecord.__new__(AttendanceRecord)
+    from unittest.mock import MagicMock
+    record = MagicMock(spec=AttendanceRecord)
     record.id = uuid.uuid4()
     record.employee_id = uuid.uuid4()
     record.device_id = uuid.uuid4()
@@ -145,7 +146,7 @@ class TestCalculateDay:
         assert result.extra_minutes_100pct == 0
 
     def test_overtime_sunday_100pct(self):
-        """Horas extras no domingo → 100%."""
+        """1h extra no domingo → 100%. 8:00-12:00 + 13:00-18:00 = 9h - 8h padrão = 1h extra."""
         sunday = date(2026, 3, 29)  # domingo
         records = [
             make_record(RecordType.IN, 8, 0),
@@ -154,7 +155,7 @@ class TestCalculateDay:
             make_record(RecordType.OUT, 18, 0),
         ]
         result = calculate_day(records, sunday)
-        assert result.extra_minutes_100pct == 2 * 60
+        assert result.extra_minutes_100pct == 60
         assert result.extra_minutes_50pct == 0
 
     def test_no_records_full_debit(self):

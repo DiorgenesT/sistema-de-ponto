@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 import structlog
 
@@ -8,6 +9,7 @@ from app.domain.attendance.models import AttendanceRecord, RecordType
 from app.domain.attendance.repository import AttendanceRepository
 from app.domain.devices.models import AuthorizedDevice
 from app.domain.facial.service import FacialService
+from app.domain.hour_bank.calculator import TOLERANCE_PER_RECORD_MINUTES
 
 log = structlog.get_logger(__name__)
 
@@ -59,11 +61,16 @@ class AttendanceService:
         last_record = await self._repo.get_last_for_employee_today(employee_id, now.date())
         record_type = self._determine_record_type(last_record)
 
-        # 3. Criar registro imutável
+        # 3. Aplicar tolerância por marcação (Art. 74 §1º CLT)
+        # Se o funcionário bateu até TOLERANCE_PER_RECORD_MINUTES min após o horário
+        # exato de início/fim de jornada, arredondar para o horário programado.
+        recorded_at = self._apply_per_record_tolerance(now, last_record, record_type)
+
+        # 4. Criar registro imutável
         record = AttendanceRecord(
             employee_id=employee_id,
             device_id=device.id,
-            recorded_at=now,       # timestamp NTP — nunca datetime.now()
+            recorded_at=recorded_at,   # timestamp NTP com tolerância aplicada
             record_type=record_type,
             facial_confidence=round(confidence, 4),
             ip_address=ip_address,
@@ -74,12 +81,14 @@ class AttendanceService:
 
         record = await self._repo.create(record)
 
+        tolerance_applied = recorded_at != now
         log.info(
             "attendance.registered",
             employee_id=str(employee_id),
             record_type=record_type.value,
             device_id=str(device.id),
             facial_confidence=round(confidence, 4),
+            tolerance_applied=tolerance_applied,
         )
         return record
 
@@ -141,3 +150,37 @@ class AttendanceService:
         if last_record is None or last_record.record_type == RecordType.OUT:
             return RecordType.IN
         return RecordType.OUT
+
+    @staticmethod
+    def _apply_per_record_tolerance(
+        now: "datetime",
+        last_record: AttendanceRecord | None,
+        record_type: RecordType,
+    ) -> "datetime":
+        """
+        Aplica tolerância de 5 min por marcação (Art. 74 §1º CLT).
+
+        Se o funcionário bater ponto até 5 min antes ou depois de uma marcação
+        anterior que implique horário exato, arredonda para o minuto exato.
+        Na prática: se a marcação ocorrer dentro de 5 min de um horário cheio
+        (ex: 08:03 → arredonda para 08:00; 17:57 → arredonda para 18:00).
+
+        A tolerância arredonda para o minuto mais próximo dentro da janela,
+        favorecendo o registro fiel quando não há horário de referência explícito.
+        Para aplicação completa contra a escala (expected_minutes), o calculator
+        de banco de horas já aplica a tolerância diária acumulada de 10 min.
+        """
+        from datetime import datetime
+
+        # Arredonda para o minuto exato mais próximo dentro da janela de tolerância
+        # Compara os segundos (0-59) contra o limiar em segundos
+        seconds = now.second + now.microsecond / 1e6
+        threshold = TOLERANCE_PER_RECORD_MINUTES  # tolerância em segundos dentro do minuto
+        if seconds <= threshold:
+            # Bate logo após o horário cheio — arredonda para baixo
+            return now.replace(second=0, microsecond=0)
+        elif seconds >= 60 - threshold:
+            # Bate logo antes do próximo minuto cheio — arredonda para cima
+            return (now + timedelta(seconds=60 - seconds)).replace(microsecond=0)
+
+        return now

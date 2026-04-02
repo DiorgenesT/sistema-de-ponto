@@ -1,12 +1,18 @@
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Header, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import EmployeeNotFoundError, InvalidDeviceTokenError
-from app.core.security import create_access_token, create_refresh_token, hash_token, verify_password
+from app.core.exceptions import EmployeeNotFoundError, InvalidCredentialsError
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_token,
+    verify_password,
+)
+from app.domain.auth.repository import RefreshTokenRepository
 from app.domain.employees.repository import EmployeeRepository
 from app.infrastructure.database import get_db
 
@@ -25,30 +31,31 @@ async def login(
     """
     Autenticação via email + senha.
     Retorna access token (15min) + refresh token (7 dias).
+    Persiste hash do refresh token no banco para rotação segura.
     """
-    repo = EmployeeRepository(db)
-    employee = await repo.get_by_email(form_data.username, company_id=None)  # type: ignore[arg-type]
+    from sqlalchemy import select
+    from app.domain.employees.models import Employee
 
-    # Busca por email sem company_id — ajustar para multi-tenant se necessário
-    if not employee:
-        # Busca global por email
-        from sqlalchemy import select
-        from app.domain.employees.models import Employee
-        result = await db.execute(
-            select(Employee).where(
-                Employee.email == form_data.username,
-                Employee.is_active.is_(True),
-                Employee.deleted_at.is_(None),
-            ).limit(1)
-        )
-        employee = result.scalar_one_or_none()
+    result = await db.execute(
+        select(Employee).where(
+            Employee.email == form_data.username,
+            Employee.is_active.is_(True),
+            Employee.deleted_at.is_(None),
+        ).limit(1)
+    )
+    employee = result.scalar_one_or_none()
 
     if not employee or not employee.password_hash:
-        raise InvalidDeviceTokenError("Credenciais inválidas.")
+        log.warning("auth.login.invalid_email", email=form_data.username)
+        raise InvalidCredentialsError()
 
     if not verify_password(form_data.password, employee.password_hash):
-        log.warning("auth.login.failed", email=form_data.username, ip=request.client.host if request.client else "unknown")
-        raise InvalidDeviceTokenError("Credenciais inválidas.")
+        log.warning(
+            "auth.login.wrong_password",
+            employee_id=str(employee.id),
+            ip=request.client.host if request.client else "unknown",
+        )
+        raise InvalidCredentialsError()
 
     access_token = create_access_token(
         subject=str(employee.id),
@@ -56,11 +63,22 @@ async def login(
     )
     raw_refresh, expires_at = create_refresh_token(str(employee.id))
 
-    # TODO: persistir hash do refresh token no banco para rotação
+    # Persiste hash — nunca o token raw
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+    await RefreshTokenRepository(db).create(
+        employee_id=employee.id,
+        token_hash=hash_token(raw_refresh),
+        expires_at=expires_at,
+        ip_address=ip,
+        user_agent=ua[:255] if ua else None,
+    )
+
     log.info("auth.login.success", employee_id=str(employee.id))
 
     return {
         "access_token": access_token,
+        "refresh_token": raw_refresh,
         "token_type": "bearer",
         "expires_in": 15 * 60,
         "employee": {
@@ -74,10 +92,80 @@ async def login(
 
 @router.post("/refresh")
 @limiter.limit("20/minute")
-async def refresh_token(request: Request) -> dict:
+async def refresh_token(
+    request: Request,
+    x_refresh_token: str = Header(..., alias="X-Refresh-Token"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """
-    Renova access token via refresh token.
-    TODO: implementar rotação de refresh token com persistência no banco.
+    Renova access token via refresh token com rotação.
+
+    - Valida hash no banco (não revogado, não expirado)
+    - Revoga token antigo imediatamente
+    - Emite novo par (access + refresh)
     """
-    # Implementação completa na próxima iteração
-    raise NotImplementedError("Refresh token rotation — próxima sprint")
+    from sqlalchemy import select
+    from app.domain.employees.models import Employee
+    from app.core.exceptions import InvalidCredentialsError
+
+    repo = RefreshTokenRepository(db)
+    token_hash = hash_token(x_refresh_token)
+    stored = await repo.get_valid(token_hash)
+
+    if not stored:
+        log.warning("auth.refresh.invalid_token", ip=request.client.host if request.client else "unknown")
+        raise InvalidCredentialsError("Refresh token inválido ou expirado.")
+
+    # Buscar funcionário
+    result = await db.execute(
+        select(Employee).where(
+            Employee.id == stored.employee_id,
+            Employee.is_active.is_(True),
+        ).limit(1)
+    )
+    employee = result.scalar_one_or_none()
+    if not employee:
+        raise InvalidCredentialsError("Funcionário não encontrado ou inativo.")
+
+    # Revogar token atual (rotação)
+    await repo.revoke(token_hash)
+
+    # Emitir novos tokens
+    access_token = create_access_token(
+        subject=str(employee.id),
+        extra_claims={"role": employee.role.value, "company_id": str(employee.company_id)},
+    )
+    raw_refresh, expires_at = create_refresh_token(str(employee.id))
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+    await repo.create(
+        employee_id=employee.id,
+        token_hash=hash_token(raw_refresh),
+        expires_at=expires_at,
+        ip_address=ip,
+        user_agent=ua[:255] if ua else None,
+    )
+
+    log.info("auth.refresh.success", employee_id=str(employee.id))
+
+    return {
+        "access_token": access_token,
+        "refresh_token": raw_refresh,
+        "token_type": "bearer",
+        "expires_in": 15 * 60,
+    }
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
+async def logout(
+    request: Request,
+    x_refresh_token: str = Header(..., alias="X-Refresh-Token"),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Encerra sessão revogando o refresh token.
+    Access token expira naturalmente em 15min.
+    """
+    await RefreshTokenRepository(db).revoke(hash_token(x_refresh_token))
+    log.info("auth.logout", ip=request.client.host if request.client else "unknown")
