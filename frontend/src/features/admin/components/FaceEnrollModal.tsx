@@ -8,6 +8,14 @@ interface FaceEnrollModalProps {
   onClose: () => void;
 }
 
+function extractApiError(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const res = (err as { response?: { data?: { error?: { message?: string } } } }).response;
+    if (res?.data?.error?.message) return res.data.error.message;
+  }
+  return "Erro ao cadastrar biometria. Tente novamente.";
+}
+
 export function FaceEnrollModal({ employeeId, employeeName, onClose }: FaceEnrollModalProps) {
   const webcamRef = useRef<Webcam>(null);
   const [captured, setCaptured] = useState<string | null>(null);
@@ -44,8 +52,9 @@ export function FaceEnrollModal({ employeeId, employeeName, onClose }: FaceEnrol
     try {
       await enrollMutation.mutateAsync({ employeeId, image_b64: captured });
       onClose();
-    } catch {
-      setError("Erro ao cadastrar biometria. Verifique se o rosto está bem iluminado e tente novamente.");
+    } catch (err: unknown) {
+      const msg = extractApiError(err);
+      setError(msg);
       setCaptured(null);
     }
   };

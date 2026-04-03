@@ -124,6 +124,10 @@ async def enroll_face(
     facial_repo = FacialRepository(db)
     facial_svc = FacialService(facial_repo, employee_svc)
 
+    # Garantir consentimento LGPD ativo antes do enrollment.
+    # O admin registra o consentimento presencialmente em nome do funcionário.
+    await employee_svc.grant_lgpd_consent(employee_id, ip_address="admin-panel")
+
     await facial_svc.enroll(
         employee_id=employee_id,
         image_b64=body.image_b64,
