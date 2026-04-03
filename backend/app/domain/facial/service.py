@@ -108,6 +108,59 @@ class FacialService:
         log.info("facial.verified", employee_id=str(employee_id), confidence=round(score, 4))
         return score
 
+    async def identify(
+        self,
+        probe_image_b64: str,
+        company_id: uuid.UUID,
+    ) -> tuple[uuid.UUID, float]:
+        """
+        Identifica funcionário por reconhecimento facial (1:N) — modo terminal quiosque.
+
+        Compara o rosto capturado com todos os embeddings ativos da empresa e retorna
+        o funcionário com maior score acima do threshold.
+
+        Args:
+            probe_image_b64: Frame capturado pelo terminal em base64.
+            company_id: Empresa do dispositivo (isola busca por tenant).
+
+        Returns:
+            Tuple (employee_id, confidence).
+
+        Raises:
+            EmbeddingNotFoundError: Nenhum embedding cadastrado na empresa.
+            FaceNotDetectedError: Nenhum rosto na imagem de prova.
+            FacialVerificationError: Nenhum funcionário reconhecido acima do threshold.
+        """
+        from app.domain.facial.verifier import cosine_similarity
+        from app.core.config import settings
+        from app.core.exceptions import FacialVerificationError
+
+        all_embeddings = await self._facial_repo.get_all_active_by_company(company_id)
+        if not all_embeddings:
+            raise EmbeddingNotFoundError("Nenhum embedding cadastrado para esta empresa.")
+
+        probe = extract_embedding_from_b64(probe_image_b64)
+
+        best_score = 0.0
+        best_employee_id: uuid.UUID | None = None
+
+        for record in all_embeddings:
+            gallery = decrypt_embedding(record.embedding_encrypted, record.iv)
+            score = cosine_similarity(probe, gallery)
+            del gallery
+            if score > best_score:
+                best_score = score
+                best_employee_id = record.employee_id
+
+        if best_employee_id is None or best_score < settings.FACIAL_SIMILARITY_THRESHOLD:
+            raise FacialVerificationError(
+                f"Nenhum funcionário reconhecido. Melhor score: {best_score:.4f}",
+                similarity=best_score,
+            )
+
+        log.info("facial.identified", employee_id=str(best_employee_id), confidence=round(best_score, 4))
+        return best_employee_id, best_score
+
     async def delete_biometric_data(self, employee_id: uuid.UUID) -> None:
         """
         Exclui dados biométricos do funcionário (Art. 18 LGPD).

@@ -10,4 +10,5 @@ export interface AttendanceResponse {
   is_adjustment: boolean;
   original_record_id: string | null;
   created_at: string;
+  employee_name: string | null;
 }

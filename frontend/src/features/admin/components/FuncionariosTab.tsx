@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/shared/lib/cn";
 import { useCreateEmployee, useEmployees, useToggleEmployeeActive } from "../hooks/useEmployees";
+import { FaceEnrollModal } from "./FaceEnrollModal";
 import type { Employee, EmployeeRole } from "../types";
 
 const ROLE_LABELS: Record<EmployeeRole, string> = {
@@ -32,6 +33,7 @@ export function FuncionariosTab() {
   const { employee: me } = useAuthStore();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [enrollTarget, setEnrollTarget] = useState<Employee | null>(null);
 
   const { data, isLoading, isError } = useEmployees(me?.companyId ?? "");
   const createMutation = useCreateEmployee();
@@ -176,15 +178,24 @@ export function FuncionariosTab() {
                       <StatusBadge active={emp.is_active} />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {emp.id !== me?.id && (
+                      <div className="flex items-center justify-end gap-1">
                         <button
-                          onClick={() => handleToggleActive(emp)}
-                          disabled={toggleMutation.isPending}
-                          className="rounded px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                          onClick={() => setEnrollTarget(emp)}
+                          className="rounded px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800"
+                          title="Cadastrar biometria facial"
                         >
-                          {emp.is_active ? "Desativar" : "Ativar"}
+                          Rosto
                         </button>
-                      )}
+                        {emp.id !== me?.id && (
+                          <button
+                            onClick={() => handleToggleActive(emp)}
+                            disabled={toggleMutation.isPending}
+                            className="rounded px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                          >
+                            {emp.is_active ? "Desativar" : "Ativar"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,6 +207,14 @@ export function FuncionariosTab() {
           </>
         )}
       </div>
+
+      {enrollTarget && (
+        <FaceEnrollModal
+          employeeId={enrollTarget.id}
+          employeeName={enrollTarget.full_name}
+          onClose={() => setEnrollTarget(null)}
+        />
+      )}
     </div>
   );
 }

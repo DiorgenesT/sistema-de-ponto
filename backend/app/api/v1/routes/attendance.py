@@ -51,12 +51,19 @@ async def register_attendance(
     ip_address = request.client.host if request.client else "unknown"
 
     record = await svc.register(
-        employee_id=body.employee_id,
+        employee_id=body.employee_id,  # None → identificação 1:N no kiosk
         image_b64=body.image_b64,
         device=device,
         ip_address=ip_address,
     )
-    return AttendanceResponse.model_validate(record)
+
+    # Buscar nome do funcionário para exibição no terminal
+    employee_repo = EmployeeRepository(db)
+    employee = await employee_repo.get_by_id(record.employee_id)
+
+    response = AttendanceResponse.model_validate(record)
+    response.employee_name = employee.full_name if employee else None
+    return response
 
 
 @router.get("/me", response_model=AttendanceListResponse)

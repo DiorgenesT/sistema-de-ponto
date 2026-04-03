@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentEmployee, DBSession, require_admin
@@ -14,6 +15,10 @@ from app.domain.employees.schemas import (
 from app.domain.employees.service import EmployeeService
 
 router = APIRouter()
+
+
+class FaceEnrollRequest(BaseModel):
+    image_b64: str
 
 
 def _build_service(db: AsyncSession) -> EmployeeService:
@@ -76,6 +81,37 @@ async def update_employee(
     svc = _build_service(db)
     employee = await svc.update(employee_id, body, updated_by_id=current_employee.id)
     return EmployeeResponse.model_validate(employee)
+
+
+@router.post("/{employee_id}/enroll-face", status_code=status.HTTP_201_CREATED)
+async def enroll_face(
+    employee_id: uuid.UUID,
+    body: FaceEnrollRequest,
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> dict:
+    """
+    Cadastra embedding facial de um funcionário.
+
+    Requer ADMIN. O funcionário deve ter consentimento LGPD ativo antes do cadastro.
+    O token é retornado apenas para confirmação — o embedding nunca sai descriptografado.
+    """
+    await require_admin(current_employee)
+
+    from app.domain.facial.repository import FacialRepository
+    from app.domain.facial.service import FacialService
+
+    employee_repo = EmployeeRepository(db)
+    employee_svc = EmployeeService(employee_repo)
+    facial_repo = FacialRepository(db)
+    facial_svc = FacialService(facial_repo, employee_svc)
+
+    await facial_svc.enroll(
+        employee_id=employee_id,
+        image_b64=body.image_b64,
+        enrolled_by_id=current_employee.id,
+    )
+    return {"enrolled": True, "employee_id": str(employee_id)}
 
 
 @router.post("/{employee_id}/consent", status_code=status.HTTP_201_CREATED)

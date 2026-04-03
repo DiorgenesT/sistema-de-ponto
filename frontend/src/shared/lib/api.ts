@@ -29,6 +29,14 @@ api.interceptors.response.use(
     const original = error.config as typeof error.config & { _retry?: boolean };
 
     if (error.response?.status === 401 && !original._retry) {
+      const { accessToken } = useAuthStore.getState();
+
+      // Sem access token = terminal kiosk sem usuário logado.
+      // O 401 é de device token inválido — não tentar refresh, só rejeitar.
+      if (!accessToken) {
+        return Promise.reject(error);
+      }
+
       original._retry = true;
       try {
         await useAuthStore.getState().refreshTokens();

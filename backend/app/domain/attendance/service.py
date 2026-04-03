@@ -25,7 +25,7 @@ class AttendanceService:
 
     async def register(
         self,
-        employee_id: uuid.UUID,
+        employee_id: uuid.UUID | None,
         image_b64: str,
         device: AuthorizedDevice,
         ip_address: str,
@@ -35,12 +35,12 @@ class AttendanceService:
         Registra ponto com verificação facial.
 
         Fluxo:
-        1. Verificar identidade facial
+        1. Identificar/verificar identidade facial
         2. Determinar tipo (IN/OUT) pela alternância
         3. Persistir registro imutável com timestamp NTP
 
         Args:
-            employee_id: ID do funcionário.
+            employee_id: ID do funcionário. Se None, faz identificação 1:N pelo rosto.
             image_b64: Frame do terminal em base64.
             device: Dispositivo autorizado já validado pelo dep. inject.
             ip_address: IP do cliente.
@@ -52,9 +52,15 @@ class AttendanceService:
         Raises:
             FacialVerificationError: Rosto não reconhecido.
             FaceNotDetectedError: Sem rosto na imagem.
+            EmbeddingNotFoundError: Sem embeddings cadastrados.
         """
-        # 1. Verificação facial (lança exceção se falhar)
-        confidence = await self._facial.verify_identity(employee_id, image_b64)
+        # 1. Identificação ou verificação facial
+        if employee_id is None:
+            # Modo terminal quiosque: identificação 1:N
+            employee_id, confidence = await self._facial.identify(image_b64, device.company_id)
+        else:
+            # Modo verificação 1:1 (ajuste manual / portal do funcionário)
+            confidence = await self._facial.verify_identity(employee_id, image_b64)
 
         # 2. Determinar tipo IN/OUT pela alternância
         now = get_current_time()

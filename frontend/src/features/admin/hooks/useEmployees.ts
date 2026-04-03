@@ -27,6 +27,15 @@ export function useCreateEmployee() {
   });
 }
 
+export function useEnrollFace() {
+  return useMutation<{ enrolled: boolean }, Error, { employeeId: string; image_b64: string }>({
+    mutationFn: async ({ employeeId, image_b64 }) => {
+      const { data } = await api.post(`/employees/${employeeId}/enroll-face`, { image_b64 });
+      return data;
+    },
+  });
+}
+
 export function useToggleEmployeeActive() {
   const queryClient = useQueryClient();
   return useMutation<Employee, Error, { id: string; is_active: boolean }>({
