@@ -59,8 +59,9 @@ export function FuncionariosTab() {
       });
       reset();
       setShowForm(false);
-    } catch {
-      setFormError("Erro ao cadastrar funcionário. Verifique os dados e tente novamente.");
+    } catch (err: unknown) {
+      const msg = extractApiError(err);
+      setFormError(msg);
     }
   }
 
@@ -217,6 +218,19 @@ export function FuncionariosTab() {
       )}
     </div>
   );
+}
+
+function extractApiError(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const res = (err as { response?: { data?: { error?: { message?: string }; detail?: unknown } } }).response;
+    if (res?.data?.error?.message) return res.data.error.message;
+    // Pydantic 422
+    if (res?.data?.detail && Array.isArray(res.data.detail)) {
+      const first = (res.data.detail as Array<{ msg?: string }>)[0];
+      return first?.msg ?? "Dados inválidos.";
+    }
+  }
+  return "Erro ao cadastrar funcionário. Tente novamente.";
 }
 
 function Field({
