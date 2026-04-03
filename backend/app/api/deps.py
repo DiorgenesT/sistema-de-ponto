@@ -123,25 +123,26 @@ async def require_authorized_device(
         )
         raise InvalidDeviceTokenError()
 
-    # Validação de IP whitelist
-    client_ip = request.client.host if request.client else ""
-    authorized = False
-    for cidr in device.ip_ranges:
-        try:
-            if ipaddress.ip_address(client_ip) in ipaddress.ip_network(cidr, strict=False):
-                authorized = True
-                break
-        except ValueError:
-            continue
+    # Validação de IP whitelist — pulada se ranges vazio ou contém 0.0.0.0/0 (allow-all)
+    if device.ip_ranges and "0.0.0.0/0" not in device.ip_ranges:
+        client_ip = request.client.host if request.client else ""
+        authorized = False
+        for cidr in device.ip_ranges:
+            try:
+                if ipaddress.ip_address(client_ip) in ipaddress.ip_network(cidr, strict=False):
+                    authorized = True
+                    break
+            except ValueError:
+                continue
 
-    if not authorized:
-        log.warning(
-            "device.auth.ip_rejected",
-            device_id=str(device.id),
-            client_ip=client_ip,
-            authorized_ranges=device.ip_ranges,
-        )
-        raise UnauthorizedDeviceError(f"IP {client_ip} não autorizado para este dispositivo.")
+        if not authorized:
+            log.warning(
+                "device.auth.ip_rejected",
+                device_id=str(device.id),
+                client_ip=client_ip,
+                authorized_ranges=device.ip_ranges,
+            )
+            raise UnauthorizedDeviceError(f"IP {client_ip} não autorizado para este dispositivo.")
 
     await repo.update_last_seen(device.id)
     return device

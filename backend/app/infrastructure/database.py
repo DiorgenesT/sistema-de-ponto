@@ -7,10 +7,12 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 _is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+# Pooler Supabase requer ssl=require e statement_cache_size=0 via asyncpg direto
+_is_pooler = "pooler.supabase.com" in settings.DATABASE_URL
 
 if _is_sqlite:
     engine = create_async_engine(settings.DATABASE_URL, echo=False)
-else:
+elif _is_pooler:
     import asyncpg
 
     _parsed = urlparse(settings.DATABASE_URL)
@@ -29,6 +31,15 @@ else:
     engine = create_async_engine(
         "postgresql+asyncpg://",
         async_creator=_asyncpg_creator,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
+else:
+    # Conexão direta (Railway com IPv6, SQLite, etc.)
+    engine = create_async_engine(
+        settings.DATABASE_URL,
         echo=False,
         pool_pre_ping=True,
         pool_size=10,
