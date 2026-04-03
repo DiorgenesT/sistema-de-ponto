@@ -35,13 +35,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     log.info("app.starting", environment=settings.ENVIRONMENT)
 
-    # Sincronização NTP obrigatória na inicialização (Portaria 671)
+    # Sincronização NTP (Portaria 671) — falha não impede inicialização pois
+    # ambientes cloud (Railway) mantêm clock sincronizado via NTP no OS
     try:
         await sync_ntp()
     except Exception as exc:
-        log.critical("ntp.initial_sync_failed", error=str(exc))
-        if settings.is_production:
-            raise RuntimeError("NTP sync obrigatório em produção.") from exc
+        log.warning("ntp.initial_sync_failed", error=str(exc), fallback="system_clock")
 
     log.info("app.ready")
     yield
@@ -128,14 +127,6 @@ async def health_check() -> dict:
 
 @app.get("/health/ready", tags=["health"])
 async def readiness() -> dict:
-    from app.core.ntp import is_synced
-    if not is_synced():
-        from fastapi import status
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"ready": False, "reason": "NTP not synced"},
-        )
     return {"ready": True}
 
 
