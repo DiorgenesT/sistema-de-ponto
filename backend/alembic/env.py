@@ -1,9 +1,22 @@
 import asyncio
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
+
+# Carrega .env do backend (ou da raiz do projeto como fallback)
+for _env_path in [Path(__file__).resolve().parents[1] / ".env", Path(__file__).resolve().parents[2] / ".env"]:
+    if _env_path.exists():
+        with open(_env_path) as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _, _v = _line.partition("=")
+                    _v = _v.split("#")[0].strip()
+                    os.environ.setdefault(_k.strip(), _v)
+        break
 
 # Importar todos os models para o Alembic detectar
 from app.infrastructure.database import Base  # noqa: F401
@@ -51,7 +64,25 @@ def do_run_migrations(connection):  # type: ignore[no-untyped-def]
 
 
 async def run_migrations_online() -> None:
-    connectable = create_async_engine(DATABASE_URL, echo=False)
+    import asyncpg
+
+    async def _creator() -> asyncpg.Connection:
+        import re
+        m = re.match(r"postgresql\+asyncpg://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", DATABASE_URL)
+        if not m:
+            raise ValueError(f"Não foi possível parsear DATABASE_URL: {DATABASE_URL}")
+        user, password, host, port, database = m.groups()
+        return await asyncpg.connect(
+            host=host,
+            port=int(port),
+            user=user,
+            password=password,
+            database=database,
+            ssl="require",
+            statement_cache_size=0,
+        )
+
+    connectable = create_async_engine("postgresql+asyncpg://", async_creator=_creator, echo=False)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
