@@ -16,43 +16,6 @@ from app.core.logging import setup_logging
 from app.core.ntp import sync_ntp
 from app.infrastructure.redis import close_redis
 
-
-async def _warmup_deepface() -> None:
-    """
-    Baixa e carrega os pesos do DeepFace/ArcFace na inicialização.
-    Evita timeout e arquivo corrompido durante o primeiro enrollment em produção.
-    Remove arquivo de pesos corrompido se detectado.
-    """
-    import asyncio
-    import os
-    import glob
-
-    def _warmup() -> None:
-        weights_dir = os.path.expanduser("~/.deepface/weights")
-        # Remover arquivos suspeitos de corrupção (< 1MB para um modelo que deve ter centenas)
-        if os.path.isdir(weights_dir):
-            for f in glob.glob(os.path.join(weights_dir, "*.h5")):
-                if os.path.getsize(f) < 1_000_000:
-                    log.warning("deepface.weights_corrupted_removed", file=f)
-                    os.remove(f)
-
-        from deepface import DeepFace
-        from app.domain.facial.encoder import MODEL_NAME, DETECTOR_BACKEND
-        # Forçar download/build do modelo com uma imagem sintética mínima
-        import numpy as np
-        dummy = np.zeros((112, 112, 3), dtype=np.uint8)
-        try:
-            DeepFace.represent(
-                img_path=dummy,
-                model_name=MODEL_NAME,
-                detector_backend="skip",   # skip detector — só carrega o modelo de embedding
-                enforce_detection=False,
-            )
-        except Exception:
-            pass  # erro esperado com imagem sintética — modelo já foi carregado
-
-    await asyncio.get_event_loop().run_in_executor(None, _warmup)
-
 log = structlog.get_logger(__name__)
 
 # ---- Sentry ----------------------------------------------------------------
@@ -78,13 +41,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await sync_ntp()
     except Exception as exc:
         log.warning("ntp.initial_sync_failed", error=str(exc), fallback="system_clock")
-
-    # Pré-aquecer modelos DeepFace para evitar timeout no primeiro enrollment.
-    # O download dos pesos (~600MB) ocorre aqui, fora do ciclo de request.
-    try:
-        await _warmup_deepface()
-    except Exception as exc:
-        log.warning("deepface.warmup_failed", error=str(exc))
 
     log.info("app.ready")
     yield
