@@ -1,5 +1,4 @@
 name = "sistema-ponto"
-account_id = "d2ba95e1ad712f466ec368a12aeaecd2"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"

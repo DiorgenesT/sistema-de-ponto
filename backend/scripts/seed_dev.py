@@ -348,7 +348,24 @@ async def seed(session: AsyncSession) -> None:
 # ---------------------------------------------------------------------------
 
 async def main() -> None:
-    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    import asyncpg as _asyncpg
+
+    async def _creator() -> _asyncpg.Connection:
+        return await _asyncpg.connect(
+            host="aws-1-sa-east-1.pooler.supabase.com",
+            port=6543,
+            user="postgres.dzrigbptvlpbruxtkbuu",
+            password=settings.DATABASE_URL.split(":")[2].split("@")[0],
+            database="postgres",
+            ssl="require",
+            statement_cache_size=0,
+        )
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://",
+        async_creator=_creator,
+        echo=False,
+    )
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
