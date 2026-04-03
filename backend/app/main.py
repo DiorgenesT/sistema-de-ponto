@@ -95,6 +95,7 @@ async def request_id_middleware(request: Request, call_next):  # type: ignore[no
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
+    import asyncio
     from app.core.ntp import is_synced, get_last_sync
     from app.infrastructure.redis import get_redis
     from app.infrastructure.database import engine
@@ -103,16 +104,20 @@ async def health_check() -> dict:
     # DB
     db_status = "ok"
     try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
+        async def _check_db() -> None:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        await asyncio.wait_for(_check_db(), timeout=5.0)
     except Exception:
         db_status = "error"
 
     # Redis
     redis_status = "ok"
     try:
-        r = await get_redis()
-        await r.ping()
+        async def _check_redis() -> None:
+            r = await get_redis()
+            await r.ping()
+        await asyncio.wait_for(_check_redis(), timeout=5.0)
     except Exception:
         redis_status = "error"
 
