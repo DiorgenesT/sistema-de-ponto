@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { FuncionariosTab } from "./components/FuncionariosTab";
 import { DispositivosTab } from "./components/DispositivosTab";
@@ -21,14 +21,12 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>("employees");
 
   if (!employee) {
-    navigate("/login", { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   const isPrivileged = ["MANAGER", "ADMIN", "SUPER_ADMIN"].includes(employee.role);
   if (!isPrivileged) {
-    navigate("/portal", { replace: true });
-    return null;
+    return <Navigate to="/portal" replace />;
   }
 
   const TABS: { id: Tab; label: string; roles: string[] }[] = [

@@ -1,5 +1,29 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ErrorBoundary]", error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-50 text-gray-600">
+          <p className="text-sm">Ocorreu um erro inesperado.</p>
+          <button
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100"
+            onClick={() => this.setState({ hasError: false })}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Lazy loading por feature — cada bundle carregado sob demanda
 const AttendancePage = lazy(() => import("@/features/attendance"));
@@ -19,6 +43,7 @@ function PageLoader() {
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Verificação de dispositivo — primeira tela */}
@@ -41,6 +66,7 @@ export function AppRouter() {
           <Route path="*" element={<Navigate to="/attendance" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
