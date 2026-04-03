@@ -54,6 +54,7 @@ async def list_employees(
         company_id=current_employee.company_id,
         page=page,
         page_size=page_size,
+        active_only=False,
     )
     return EmployeeListResponse(
         items=[EmployeeResponse.model_validate(e) for e in items],
