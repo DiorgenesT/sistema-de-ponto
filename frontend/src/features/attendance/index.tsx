@@ -13,11 +13,10 @@ type PageState =
 
 export default function AttendancePage() {
   const [state, setState] = useState<PageState>({ view: "camera" });
-  const employee = useAuthStore((s) => s.employee);
+  const { employee, deviceToken } = useAuthStore((s) => ({ employee: s.employee, deviceToken: s.deviceToken }));
 
-  if (!employee) {
-    // Terminal sem login de usuário — funcionário é identificado pelo facial
-    // Redirecionar para login apenas se necessário (modo quiosque)
+  // Terminal quiosque: bloqueado se não há device token autorizado
+  if (!deviceToken) {
     return <TerminalLocked />;
   }
 
@@ -56,7 +55,7 @@ export default function AttendancePage() {
               </p>
             </div>
             <AttendanceCamera
-              employeeId={employee.id}
+              employeeId={employee?.id ?? ""}
               onSuccess={handleSuccess}
               onError={handleError}
             />
@@ -66,7 +65,7 @@ export default function AttendancePage() {
         {state.view === "success" && (
           <AttendanceResult
             record={state.record}
-            employeeName={employee.fullName}
+            employeeName={employee?.fullName ?? ""}
             onDismiss={handleDismiss}
           />
         )}
