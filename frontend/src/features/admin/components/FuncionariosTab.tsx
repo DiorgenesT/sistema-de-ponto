@@ -5,7 +5,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/shared/lib/cn";
-import { useCreateEmployee, useEmployees, useToggleEmployeeActive } from "../hooks/useEmployees";
+import { useCreateEmployee, useDeleteEmployee, useEmployees, useToggleEmployeeActive } from "../hooks/useEmployees";
 import { FaceEnrollModal } from "./FaceEnrollModal";
 import type { Employee, EmployeeRole } from "../types";
 
@@ -38,6 +38,7 @@ export function FuncionariosTab() {
   const { data, isLoading, isError } = useEmployees(me?.companyId ?? "");
   const createMutation = useCreateEmployee();
   const toggleMutation = useToggleEmployeeActive();
+  const deleteMutation = useDeleteEmployee();
 
   const {
     register,
@@ -188,13 +189,26 @@ export function FuncionariosTab() {
                           Rosto
                         </button>
                         {emp.id !== me?.id && (
-                          <button
-                            onClick={() => handleToggleActive(emp)}
-                            disabled={toggleMutation.isPending}
-                            className="rounded px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
-                          >
-                            {emp.is_active ? "Desativar" : "Ativar"}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleToggleActive(emp)}
+                              disabled={toggleMutation.isPending}
+                              className="rounded px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                            >
+                              {emp.is_active ? "Desativar" : "Ativar"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Excluir permanentemente "${emp.full_name}"? Esta ação não pode ser desfeita.`)) {
+                                  void deleteMutation.mutateAsync(emp.id);
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="rounded px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                            >
+                              Excluir
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

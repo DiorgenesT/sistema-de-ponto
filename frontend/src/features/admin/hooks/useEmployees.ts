@@ -27,6 +27,18 @@ export function useCreateEmployee() {
   });
 }
 
+export function useDeleteEmployee() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/employees/${id}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "employees"] });
+    },
+  });
+}
+
 export function useEnrollFace() {
   return useMutation<{ enrolled: boolean }, Error, { employeeId: string; image_b64: string }>({
     mutationFn: async ({ employeeId, image_b64 }) => {
