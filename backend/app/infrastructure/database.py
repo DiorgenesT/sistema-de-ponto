@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -6,11 +7,33 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 _is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-_engine_kwargs: dict = {"echo": False}
-if not _is_sqlite:
-    _engine_kwargs.update({"pool_pre_ping": True, "pool_size": 10, "max_overflow": 20})
 
-engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
+if _is_sqlite:
+    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+else:
+    import asyncpg
+
+    _parsed = urlparse(settings.DATABASE_URL)
+
+    async def _asyncpg_creator() -> asyncpg.Connection:
+        return await asyncpg.connect(
+            host=_parsed.hostname,
+            port=_parsed.port or 5432,
+            user=_parsed.username,
+            password=_parsed.password,
+            database=(_parsed.path or "/postgres").lstrip("/"),
+            ssl="require",
+            statement_cache_size=0,
+        )
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://",
+        async_creator=_asyncpg_creator,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
