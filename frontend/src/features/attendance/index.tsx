@@ -13,7 +13,6 @@ type PageState =
 
 export default function AttendancePage() {
   const [state, setState] = useState<PageState>({ view: "camera" });
-  const employee = useAuthStore((s) => s.employee);
   const deviceToken = useAuthStore((s) => s.deviceToken);
 
   // Terminal quiosque: bloqueado se não há device token autorizado
@@ -56,7 +55,6 @@ export default function AttendancePage() {
               </p>
             </div>
             <AttendanceCamera
-              employeeId={employee?.id ?? ""}
               onSuccess={handleSuccess}
               onError={handleError}
             />
@@ -66,7 +64,7 @@ export default function AttendancePage() {
         {state.view === "success" && (
           <AttendanceResult
             record={state.record}
-            employeeName={employee?.fullName ?? ""}
+            employeeName={state.record.employee_name ?? ""}
             onDismiss={handleDismiss}
           />
         )}

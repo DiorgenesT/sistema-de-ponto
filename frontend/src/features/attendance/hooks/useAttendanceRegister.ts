@@ -3,7 +3,6 @@ import { api } from "@/shared/lib/api";
 import type { AttendanceResponse } from "../types";
 
 interface RegisterPayload {
-  employee_id: string;
   image_b64: string;
   device_fingerprint?: string;
 }

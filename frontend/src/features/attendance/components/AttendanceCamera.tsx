@@ -7,14 +7,13 @@ import { FaceOverlay } from "./FaceOverlay";
 import type { AttendanceResponse } from "../types";
 
 interface AttendanceCameraProps {
-  employeeId: string;
   onSuccess: (record: AttendanceResponse) => void;
   onError: (message: string) => void;
 }
 
 const CAPTURE_DELAY_MS = 1500; // aguardar 1.5s após detecção antes de capturar
 
-export function AttendanceCamera({ employeeId, onSuccess, onError }: AttendanceCameraProps) {
+export function AttendanceCamera({ onSuccess, onError }: AttendanceCameraProps) {
   const webcamRef = useRef<Webcam>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -69,7 +68,6 @@ export function AttendanceCamera({ employeeId, onSuccess, onError }: AttendanceC
     try {
       const fp = collectFingerprint();
       const record = await registerMutation.mutateAsync({
-        employee_id: employeeId,
         image_b64,
         device_fingerprint: fingerprintToString(fp),
       });
