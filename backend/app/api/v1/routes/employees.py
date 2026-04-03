@@ -83,6 +83,23 @@ async def update_employee(
     return EmployeeResponse.model_validate(employee)
 
 
+@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_employee(
+    employee_id: uuid.UUID,
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> None:
+    """Exclusão lógica de funcionário (soft delete). Requer ADMIN."""
+    await require_admin(current_employee)
+    svc = _build_service(db)
+    employee = await svc.get_or_raise(employee_id)
+    if employee.id == current_employee.id:
+        from app.core.exceptions import InsufficientPermissionsError
+        raise InsufficientPermissionsError("Não é possível excluir o próprio usuário.")
+    repo = EmployeeRepository(db)
+    await repo.soft_delete(employee)
+
+
 @router.post("/{employee_id}/enroll-face", status_code=status.HTTP_201_CREATED)
 async def enroll_face(
     employee_id: uuid.UUID,
