@@ -13,7 +13,8 @@ type PageState =
 
 export default function AttendancePage() {
   const [state, setState] = useState<PageState>({ view: "camera" });
-  const { employee, deviceToken } = useAuthStore((s) => ({ employee: s.employee, deviceToken: s.deviceToken }));
+  const employee = useAuthStore((s) => s.employee);
+  const deviceToken = useAuthStore((s) => s.deviceToken);
 
   // Terminal quiosque: bloqueado se não há device token autorizado
   if (!deviceToken) {
