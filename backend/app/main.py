@@ -43,42 +43,61 @@ def _validate_h5(path: str) -> bool:
         return False
 
 
-async def _warmup_deepface() -> None:
-    """
-    Valida integridade dos pesos ArcFace com h5py antes de carregar o modelo.
-    Remove arquivos corrompidos/incompletos e aciona re-download pelo DeepFace.
-    """
-    import asyncio
+def _purge_invalid_weights() -> None:
+    """Remove arquivos .h5 corrompidos/incompletos do diretório de pesos."""
     import os
-
-    import numpy as np
-
     weights_dir = os.path.expanduser("~/.deepface/weights")
-    weight_files = ("arcface_weights.h5", "retinaface_resnet50.h5")
-
-    # Valida cada arquivo com h5py — independe do formato da exceção do DeepFace
-    for fname in weight_files:
+    for fname in ("arcface_weights.h5", "retinaface_resnet50.h5"):
         fpath = os.path.join(weights_dir, fname)
-        valid = await asyncio.to_thread(_validate_h5, fpath)
-        if not valid and os.path.exists(fpath):
+        if os.path.exists(fpath) and not _validate_h5(fpath):
             os.remove(fpath)
             log.warning("deepface.weights.invalid_removed", file=fname)
 
-    def _try_represent() -> None:
-        from deepface import DeepFace
-        dummy = np.zeros((112, 112, 3), dtype=np.uint8)
-        DeepFace.represent(
-            img_path=dummy,
-            model_name="ArcFace",
-            detector_backend="skip",
-            enforce_detection=False,
-        )
 
-    try:
-        await asyncio.to_thread(_try_represent)
-        log.info("deepface.warmup.ok")
-    except Exception as exc:
-        log.error("deepface.warmup.failed", error=str(exc))
+def _try_represent() -> None:
+    import numpy as np
+    from deepface import DeepFace
+    dummy = np.zeros((112, 112, 3), dtype=np.uint8)
+    DeepFace.represent(
+        img_path=dummy,
+        model_name="ArcFace",
+        detector_backend="skip",
+        enforce_detection=False,
+    )
+
+
+async def _warmup_deepface() -> None:
+    """
+    Pré-aquece o DeepFace garantindo que os pesos ArcFace sejam válidos.
+
+    Loop de retry com até 5 tentativas:
+      1. Remove arquivos .h5 inválidos/corrompidos
+      2. Chama DeepFace.represent() que aciona o download se necessário
+      3. Após a chamada, valida novamente com h5py — pesos corrompidos baixados
+         durante esta tentativa são removidos e a próxima iteração re-baixa
+    """
+    import asyncio
+
+    MAX_ATTEMPTS = 5
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        await asyncio.to_thread(_purge_invalid_weights)
+        try:
+            await asyncio.to_thread(_try_represent)
+            log.info("deepface.warmup.ok", attempt=attempt)
+            return
+        except Exception as exc:
+            log.warning(
+                "deepface.warmup.attempt_failed",
+                attempt=attempt,
+                max_attempts=MAX_ATTEMPTS,
+                error=str(exc),
+            )
+            # O download pode ter produzido um arquivo corrompido — remove antes do retry
+            await asyncio.to_thread(_purge_invalid_weights)
+            if attempt < MAX_ATTEMPTS:
+                await asyncio.sleep(15 * attempt)
+
+    log.error("deepface.warmup.exhausted", max_attempts=MAX_ATTEMPTS)
 
 
 @asynccontextmanager
