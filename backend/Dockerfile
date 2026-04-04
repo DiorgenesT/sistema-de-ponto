@@ -1,13 +1,12 @@
 FROM python:3.12-slim
 
-# Dependências de sistema para OpenCV / DeepFace + curl para download dos pesos
+# Dependências de sistema para OpenCV / DeepFace
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
     libxext6 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,20 +16,37 @@ COPY pyproject.toml .
 # Instalar dependências diretamente no Python do sistema
 RUN pip install --no-cache-dir -e ".[dev]" || pip install --no-cache-dir -e .
 
-# Pré-baixar pesos do ArcFace e RetinaFace no build.
-# curl com --fail aborta o build se o download falhar (exit code != 0).
-# h5py valida a integridade dos arquivos — build falha se arquivo corrompido.
-RUN mkdir -p /root/.deepface/weights
+# Pré-baixar pesos do ArcFace e RetinaFace usando o mecanismo interno do DeepFace
+# (URL correta por versão). SEM try/except — build falha se download falhar.
+# h5py valida integridade de todos os .h5 baixados após cada etapa.
+RUN python -c "
+import numpy as np
+from deepface import DeepFace
+dummy = np.zeros((112, 112, 3), dtype=np.uint8)
+DeepFace.represent(img_path=dummy, model_name='ArcFace', detector_backend='skip', enforce_detection=False)
+print('ArcFace: download OK')
+" && python -c "
+import glob, h5py, os
+files = glob.glob('/root/.deepface/weights/*.h5')
+assert files, 'Nenhum arquivo .h5 encontrado em ~/.deepface/weights/'
+for f in files:
+    h5py.File(f, 'r').close()
+    print(f'h5py OK: {os.path.basename(f)}')
+"
 
-RUN curl -fL --retry 5 --retry-delay 3 --retry-connrefused \
-        -o /root/.deepface/weights/arcface_weights.h5 \
-        "https://github.com/serengil/deepface_models/releases/download/v1.0/arcface_weights.h5" && \
-    python -c "import h5py; h5py.File('/root/.deepface/weights/arcface_weights.h5', 'r').close(); print('ArcFace weights: OK')"
-
-RUN curl -fL --retry 5 --retry-delay 3 --retry-connrefused \
-        -o /root/.deepface/weights/retinaface_resnet50.h5 \
-        "https://github.com/serengil/deepface_models/releases/download/v1.0/retinaface_resnet50.h5" && \
-    python -c "import h5py; h5py.File('/root/.deepface/weights/retinaface_resnet50.h5', 'r').close(); print('RetinaFace weights: OK')"
+RUN python -c "
+import numpy as np
+from deepface import DeepFace
+dummy = np.zeros((112, 112, 3), dtype=np.uint8)
+DeepFace.extract_faces(img_path=dummy, detector_backend='retinaface', enforce_detection=False)
+print('RetinaFace: download OK')
+" && python -c "
+import glob, h5py, os
+files = glob.glob('/root/.deepface/weights/*.h5')
+for f in files:
+    h5py.File(f, 'r').close()
+    print(f'h5py OK: {os.path.basename(f)}')
+"
 
 COPY . .
 
