@@ -30,15 +30,39 @@ if settings.SENTRY_DSN:
 
 # ---- Lifespan --------------------------------------------------------------
 
+def _validate_h5(path: str) -> bool:
+    """Retorna True se o arquivo .h5 é válido e legível."""
+    import os
+    if not os.path.exists(path):
+        return False
+    try:
+        import h5py
+        with h5py.File(path, "r"):
+            return True
+    except Exception:
+        return False
+
+
 async def _warmup_deepface() -> None:
-    """Pré-aquece DeepFace no startup, removendo pesos corrompidos automaticamente."""
+    """
+    Valida integridade dos pesos ArcFace com h5py antes de carregar o modelo.
+    Remove arquivos corrompidos/incompletos e aciona re-download pelo DeepFace.
+    """
     import asyncio
     import os
 
     import numpy as np
 
     weights_dir = os.path.expanduser("~/.deepface/weights")
-    corrupted_names = ("arcface_weights.h5", "retinaface_resnet50.h5")
+    weight_files = ("arcface_weights.h5", "retinaface_resnet50.h5")
+
+    # Valida cada arquivo com h5py — independe do formato da exceção do DeepFace
+    for fname in weight_files:
+        fpath = os.path.join(weights_dir, fname)
+        valid = await asyncio.to_thread(_validate_h5, fpath)
+        if not valid and os.path.exists(fpath):
+            os.remove(fpath)
+            log.warning("deepface.weights.invalid_removed", file=fname)
 
     def _try_represent() -> None:
         from deepface import DeepFace
@@ -54,21 +78,7 @@ async def _warmup_deepface() -> None:
         await asyncio.to_thread(_try_represent)
         log.info("deepface.warmup.ok")
     except Exception as exc:
-        error_msg = str(exc)
-        if "interruption during the download" in error_msg or "loading the pre-trained weights" in error_msg:
-            log.warning("deepface.weights.corrupted", error=error_msg, action="removing_and_retrying")
-            for fname in corrupted_names:
-                fpath = os.path.join(weights_dir, fname)
-                if os.path.exists(fpath):
-                    os.remove(fpath)
-                    log.info("deepface.weights.removed", file=fname)
-            try:
-                await asyncio.to_thread(_try_represent)
-                log.info("deepface.warmup.ok_after_retry")
-            except Exception as exc2:
-                log.error("deepface.warmup.failed_after_retry", error=str(exc2))
-        else:
-            log.error("deepface.warmup.failed", error=error_msg)
+        log.error("deepface.warmup.failed", error=str(exc))
 
 
 @asynccontextmanager
