@@ -55,6 +55,7 @@ def _purge_invalid_weights() -> None:
 
 
 def _try_represent() -> None:
+    """Aciona download e carregamento do ArcFace (detector_backend=skip)."""
     import numpy as np
     from deepface import DeepFace
     dummy = np.zeros((112, 112, 3), dtype=np.uint8)
@@ -66,38 +67,53 @@ def _try_represent() -> None:
     )
 
 
+def _try_retinaface() -> None:
+    """Aciona download e carregamento do RetinaFace — usado na extração real de embeddings."""
+    import numpy as np
+    from deepface import DeepFace
+    dummy = np.zeros((224, 224, 3), dtype=np.uint8)
+    DeepFace.extract_faces(
+        img_path=dummy,
+        detector_backend="retinaface",
+        enforce_detection=False,
+    )
+
+
 async def _warmup_deepface() -> None:
     """
-    Pré-aquece o DeepFace garantindo que os pesos ArcFace sejam válidos.
+    Pré-aquece ArcFace e RetinaFace garantindo que os pesos sejam válidos.
 
-    Loop de retry com até 5 tentativas:
+    Loop de retry com até 5 tentativas por modelo:
       1. Remove arquivos .h5 inválidos/corrompidos
-      2. Chama DeepFace.represent() que aciona o download se necessário
-      3. Após a chamada, valida novamente com h5py — pesos corrompidos baixados
-         durante esta tentativa são removidos e a próxima iteração re-baixa
+      2. Chama DeepFace que aciona o download se necessário
+      3. Após falha, remove arquivo corrompido gerado nesta tentativa antes de retry
     """
     import asyncio
 
     MAX_ATTEMPTS = 5
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        await asyncio.to_thread(_purge_invalid_weights)
-        try:
-            await asyncio.to_thread(_try_represent)
-            log.info("deepface.warmup.ok", attempt=attempt)
-            return
-        except Exception as exc:
-            log.warning(
-                "deepface.warmup.attempt_failed",
-                attempt=attempt,
-                max_attempts=MAX_ATTEMPTS,
-                error=str(exc),
-            )
-            # O download pode ter produzido um arquivo corrompido — remove antes do retry
-            await asyncio.to_thread(_purge_invalid_weights)
-            if attempt < MAX_ATTEMPTS:
-                await asyncio.sleep(15 * attempt)
 
-    log.error("deepface.warmup.exhausted", max_attempts=MAX_ATTEMPTS)
+    async def _warmup_model(name: str, fn: object) -> None:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            await asyncio.to_thread(_purge_invalid_weights)
+            try:
+                await asyncio.to_thread(fn)  # type: ignore[arg-type]
+                log.info("deepface.warmup.model_ok", model=name, attempt=attempt)
+                return
+            except Exception as exc:
+                log.warning(
+                    "deepface.warmup.attempt_failed",
+                    model=name,
+                    attempt=attempt,
+                    max_attempts=MAX_ATTEMPTS,
+                    error=str(exc),
+                )
+                await asyncio.to_thread(_purge_invalid_weights)
+                if attempt < MAX_ATTEMPTS:
+                    await asyncio.sleep(15 * attempt)
+        log.error("deepface.warmup.exhausted", model=name, max_attempts=MAX_ATTEMPTS)
+
+    await _warmup_model("ArcFace", _try_represent)
+    await _warmup_model("RetinaFace", _try_retinaface)
 
 
 @asynccontextmanager
