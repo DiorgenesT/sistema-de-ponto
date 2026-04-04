@@ -92,12 +92,14 @@ async def delete_employee(
 ) -> None:
     """Exclusão lógica de funcionário (soft delete). Requer ADMIN."""
     await require_admin(current_employee)
-    svc = _build_service(db)
-    employee = await svc.get_or_raise(employee_id)
+    repo = EmployeeRepository(db)
+    employee = await repo.get_by_id(employee_id)
+    if not employee:
+        from app.core.exceptions import EmployeeNotFoundError
+        raise EmployeeNotFoundError()
     if employee.id == current_employee.id:
         from app.core.exceptions import InsufficientPermissionsError
         raise InsufficientPermissionsError("Não é possível excluir o próprio usuário.")
-    repo = EmployeeRepository(db)
     await repo.soft_delete(employee)
 
 
