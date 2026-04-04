@@ -112,8 +112,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as exc:
         log.warning("ntp.initial_sync_failed", error=str(exc), fallback="system_clock")
 
-    # Pré-aquece DeepFace e valida integridade dos pesos — remove corrompidos e rebaixa
-    await _warmup_deepface()
+    # Warmup em background — não bloqueia o lifespan para o health check responder
+    # imediatamente. O primeiro request facial pode chegar antes do warmup terminar,
+    # mas o próprio endpoint trata falhas de carregamento do modelo.
+    import asyncio
+    asyncio.create_task(_warmup_deepface())
 
     log.info("app.ready")
     yield
