@@ -65,6 +65,15 @@ def extract_embedding_from_b64(image_b64: str) -> list[float]:
     except Exception as exc:
         # Não logar a imagem — dados biométricos
         log.error("facial.encoder.failed", model=MODEL_NAME, error=type(exc).__name__)
+        # Erros de carregamento de pesos (h5 corrompido, download falhou) chegam como
+        # exceções genéricas do DeepFace — converter para DomainException para o frontend
+        # receber a mensagem estruturada em vez de um 500 opaco.
+        error_msg = str(exc).lower()
+        if any(kw in error_msg for kw in ("weights", "h5", "pre-trained", "loading")):
+            from app.core.exceptions import FaceNotDetectedError as _FND
+            raise _FND(
+                "Modelo de reconhecimento facial ainda está carregando. Aguarde alguns instantes e tente novamente."
+            ) from exc
         raise
 
 
