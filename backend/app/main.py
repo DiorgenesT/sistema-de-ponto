@@ -30,6 +30,47 @@ if settings.SENTRY_DSN:
 
 # ---- Lifespan --------------------------------------------------------------
 
+async def _warmup_deepface() -> None:
+    """Pré-aquece DeepFace no startup, removendo pesos corrompidos automaticamente."""
+    import asyncio
+    import os
+
+    import numpy as np
+
+    weights_dir = os.path.expanduser("~/.deepface/weights")
+    corrupted_names = ("arcface_weights.h5", "retinaface_resnet50.h5")
+
+    def _try_represent() -> None:
+        from deepface import DeepFace
+        dummy = np.zeros((112, 112, 3), dtype=np.uint8)
+        DeepFace.represent(
+            img_path=dummy,
+            model_name="ArcFace",
+            detector_backend="skip",
+            enforce_detection=False,
+        )
+
+    try:
+        await asyncio.to_thread(_try_represent)
+        log.info("deepface.warmup.ok")
+    except Exception as exc:
+        error_msg = str(exc)
+        if "interruption during the download" in error_msg or "loading the pre-trained weights" in error_msg:
+            log.warning("deepface.weights.corrupted", error=error_msg, action="removing_and_retrying")
+            for fname in corrupted_names:
+                fpath = os.path.join(weights_dir, fname)
+                if os.path.exists(fpath):
+                    os.remove(fpath)
+                    log.info("deepface.weights.removed", file=fname)
+            try:
+                await asyncio.to_thread(_try_represent)
+                log.info("deepface.warmup.ok_after_retry")
+            except Exception as exc2:
+                log.error("deepface.warmup.failed_after_retry", error=str(exc2))
+        else:
+            log.error("deepface.warmup.failed", error=error_msg)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
@@ -41,6 +82,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await sync_ntp()
     except Exception as exc:
         log.warning("ntp.initial_sync_failed", error=str(exc), fallback="system_clock")
+
+    # Pré-aquece DeepFace e valida integridade dos pesos — remove corrompidos e rebaixa
+    await _warmup_deepface()
 
     log.info("app.ready")
     yield
