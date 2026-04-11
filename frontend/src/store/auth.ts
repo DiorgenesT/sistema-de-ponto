@@ -14,7 +14,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   setTokens: (accessToken: string) => void;
-  setDeviceToken: (deviceToken: string) => void;
+  setDeviceToken: (deviceToken: string | null) => void;
   setEmployee: (employee: AuthState["employee"]) => void;
   refreshTokens: () => Promise<void>;
   logout: () => void;

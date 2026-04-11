@@ -8,7 +8,7 @@ import type { AttendanceResponse } from "../types";
 
 interface AttendanceCameraProps {
   onSuccess: (record: AttendanceResponse) => void;
-  onError: (message: string) => void;
+  onError: (message: string, code?: string) => void;
 }
 
 const CAPTURE_DELAY_MS = 1500; // aguardar 1.5s após detecção antes de capturar
@@ -74,7 +74,8 @@ export function AttendanceCamera({ onSuccess, onError }: AttendanceCameraProps) 
       onSuccess(record);
     } catch (err: unknown) {
       const message = extractErrorMessage(err);
-      onError(message);
+      const code = extractErrorCode(err);
+      onError(message, code);
       // Reiniciar detecção após erro
       setIsCapturing(false);
       const video = webcamRef.current?.video;
@@ -110,4 +111,12 @@ function extractErrorMessage(err: unknown): string {
     return response?.data?.error?.message ?? "Erro no registro de ponto.";
   }
   return "Erro no registro de ponto.";
+}
+
+function extractErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as { response?: { data?: { error?: { code?: string } } } }).response;
+    return response?.data?.error?.code;
+  }
+  return undefined;
 }

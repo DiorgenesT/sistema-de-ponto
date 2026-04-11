@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AttendanceCamera } from "./components/AttendanceCamera";
@@ -13,7 +14,8 @@ type PageState =
 
 export default function AttendancePage() {
   const [state, setState] = useState<PageState>({ view: "camera" });
-  const deviceToken = useAuthStore((s) => s.deviceToken);
+  const navigate = useNavigate();
+  const { deviceToken, setDeviceToken } = useAuthStore();
 
   // Terminal quiosque: bloqueado se não há device token autorizado
   if (!deviceToken) {
@@ -24,7 +26,13 @@ export default function AttendancePage() {
     setState({ view: "success", record });
   };
 
-  const handleError = (message: string) => {
+  const handleError = (message: string, code?: string) => {
+    // Token inválido ou expirado: limpa o token e redireciona para configurar um novo
+    if (code === "INVALID_DEVICE_TOKEN" || code === "UNAUTHORIZED_DEVICE") {
+      setDeviceToken(null);
+      navigate("/device-check", { replace: true });
+      return;
+    }
     setState({ view: "error", message });
     setTimeout(() => setState({ view: "camera" }), 4000);
   };
