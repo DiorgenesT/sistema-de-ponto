@@ -19,5 +19,6 @@ class FacialEmbedding(Base):
     enrolled_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False)
     enrolled_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    enrollment_photo: Mapped[str | None] = mapped_column(Text, nullable=True)  # base64 JPEG para exibição no painel
 
     employee: Mapped["Employee"] = relationship("Employee", back_populates="facial_embedding", foreign_keys=[employee_id])  # type: ignore[name-defined]  # noqa: F821

@@ -34,6 +34,19 @@ class FacialRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_enrolled_employee_ids(self, company_id: uuid.UUID) -> set[uuid.UUID]:
+        """Retorna conjunto de employee_ids com embedding ativo na empresa (para has_face lookup)."""
+        from app.domain.employees.models import Employee
+        result = await self._db.execute(
+            select(FacialEmbedding.employee_id)
+            .join(Employee, FacialEmbedding.employee_id == Employee.id)
+            .where(
+                Employee.company_id == company_id,
+                FacialEmbedding.is_active.is_(True),
+            )
+        )
+        return set(result.scalars().all())
+
     async def create(self, embedding: FacialEmbedding) -> FacialEmbedding:
         """Persiste novo embedding."""
         self._db.add(embedding)

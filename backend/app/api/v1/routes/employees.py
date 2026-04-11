@@ -47,6 +47,7 @@ async def list_employees(
 ) -> EmployeeListResponse:
     """Lista funcionários da empresa. Requer MANAGER."""
     from app.api.deps import require_manager
+    from app.domain.facial.repository import FacialRepository
     await require_manager(current_employee)
 
     repo = EmployeeRepository(db)
@@ -56,8 +57,18 @@ async def list_employees(
         page_size=page_size,
         active_only=False,
     )
+
+    facial_repo = FacialRepository(db)
+    enrolled_ids = await facial_repo.get_enrolled_employee_ids(current_employee.company_id)
+
+    responses = []
+    for emp in items:
+        r = EmployeeResponse.model_validate(emp)
+        r.has_face = emp.id in enrolled_ids
+        responses.append(r)
+
     return EmployeeListResponse(
-        items=[EmployeeResponse.model_validate(e) for e in items],
+        items=responses,
         total=total,
         page=page,
         page_size=page_size,
@@ -136,6 +147,58 @@ async def enroll_face(
         enrolled_by_id=current_employee.id,
     )
     return {"enrolled": True, "employee_id": str(employee_id)}
+
+
+@router.get("/{employee_id}/face-status")
+async def get_face_status(
+    employee_id: uuid.UUID,
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> dict:
+    """
+    Retorna status do cadastro facial do funcionário.
+
+    Requer ADMIN. Inclui foto de cadastro para exibição no painel.
+    """
+    await require_admin(current_employee)
+
+    from app.domain.facial.repository import FacialRepository
+
+    facial_repo = FacialRepository(db)
+    embedding = await facial_repo.get_active_by_employee(employee_id)
+
+    if not embedding:
+        return {"enrolled": False}
+
+    return {
+        "enrolled": True,
+        "enrolled_at": embedding.enrolled_at.isoformat(),
+        "photo_b64": embedding.enrollment_photo,
+    }
+
+
+@router.delete("/{employee_id}/face", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_face(
+    employee_id: uuid.UUID,
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> None:
+    """
+    Exclui dados biométricos do funcionário (Art. 18 LGPD).
+
+    Requer ADMIN.
+    """
+    await require_admin(current_employee)
+
+    from app.domain.facial.repository import FacialRepository
+    from app.domain.facial.service import FacialService
+
+    employee_repo = EmployeeRepository(db)
+    employee_svc = EmployeeService(employee_repo)
+    facial_repo = FacialRepository(db)
+    facial_svc = FacialService(facial_repo, employee_svc)
+
+    await facial_svc.delete_biometric_data(employee_id)
 
 
 @router.post("/{employee_id}/consent", status_code=status.HTTP_201_CREATED)

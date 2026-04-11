@@ -183,9 +183,17 @@ export function FuncionariosTab() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setEnrollTarget(emp)}
-                          className="rounded px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800"
-                          title="Cadastrar biometria facial"
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium",
+                            emp.has_face
+                              ? "text-green-700 hover:bg-green-50"
+                              : "text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800"
+                          )}
+                          title={emp.has_face ? "Biometria cadastrada" : "Cadastrar biometria facial"}
                         >
+                          {emp.has_face && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          )}
                           Rosto
                         </button>
                         {emp.id !== me?.id && (

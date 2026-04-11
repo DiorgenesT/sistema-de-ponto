@@ -67,6 +67,7 @@ class FacialService:
             enrolled_by=enrolled_by_id,
             enrolled_at=get_current_time(),
             is_active=True,
+            enrollment_photo=image_b64,
         )
         record = await self._facial_repo.create(record)
 

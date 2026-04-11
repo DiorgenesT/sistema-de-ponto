@@ -11,6 +11,13 @@ export interface Employee {
   is_active: boolean;
   hired_at: string | null;
   created_at: string;
+  has_face: boolean;
+}
+
+export interface FaceStatus {
+  enrolled: boolean;
+  enrolled_at?: string;
+  photo_b64?: string | null;
 }
 
 export interface EmployeeListResponse {

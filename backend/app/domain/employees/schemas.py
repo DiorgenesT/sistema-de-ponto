@@ -40,6 +40,7 @@ class EmployeeResponse(BaseModel):
     is_active: bool
     hired_at: date | None
     created_at: datetime
+    has_face: bool = False
 
     model_config = {"from_attributes": True}
 
