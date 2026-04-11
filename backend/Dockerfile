@@ -1,12 +1,10 @@
 FROM python:3.12-slim
 
-# Dependências de sistema para OpenCV / DeepFace
+# Dependências de sistema para OpenCV e InsightFace/ONNX Runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
-    libsm6 \
-    libxrender1 \
-    libxext6 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

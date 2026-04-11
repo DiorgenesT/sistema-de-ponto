@@ -29,9 +29,9 @@ dependencies = [
     # Filas
     "celery[redis]>=5.4.0",
     "redis>=5.2.0",
-    # Reconhecimento facial
-    "deepface>=0.0.93",
-    "tf-keras>=2.16.0",              # requerido pelo deepface com tensorflow >= 2.16
+    # Reconhecimento facial (InsightFace + ONNX Runtime — sem TensorFlow)
+    "insightface>=0.7.3",
+    "onnxruntime>=1.17.0",
     "opencv-python-headless>=4.10.0",
     # NTP (Portaria 671)
     "ntplib>=0.4.0",

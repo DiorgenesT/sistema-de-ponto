@@ -30,90 +30,29 @@ if settings.SENTRY_DSN:
 
 # ---- Lifespan --------------------------------------------------------------
 
-def _validate_h5(path: str) -> bool:
-    """Retorna True se o arquivo .h5 é válido e legível."""
-    import os
-    if not os.path.exists(path):
-        return False
-    try:
-        import h5py
-        with h5py.File(path, "r"):
-            return True
-    except Exception:
-        return False
-
-
-def _purge_invalid_weights() -> None:
-    """Remove arquivos .h5 corrompidos/incompletos do diretório de pesos."""
-    import os
-    weights_dir = os.path.expanduser("~/.deepface/weights")
-    for fname in ("arcface_weights.h5", "retinaface_resnet50.h5"):
-        fpath = os.path.join(weights_dir, fname)
-        if os.path.exists(fpath) and not _validate_h5(fpath):
-            os.remove(fpath)
-            log.warning("deepface.weights.invalid_removed", file=fname)
-
-
-def _try_represent() -> None:
-    """Aciona download e carregamento do ArcFace (detector_backend=skip)."""
+def _load_insightface() -> None:
+    """Carrega modelos InsightFace + ONNX Runtime (download automático na primeira execução)."""
     import numpy as np
-    from deepface import DeepFace
+    from insightface.app import FaceAnalysis
+    app = FaceAnalysis(
+        name="buffalo_l",
+        providers=["CPUExecutionProvider"],
+        allowed_modules=["detection", "recognition"],
+    )
+    app.prepare(ctx_id=0, det_size=(640, 640))
+    # Passa imagem dummy para garantir que os grafos ONNX estão compilados
     dummy = np.zeros((112, 112, 3), dtype=np.uint8)
-    DeepFace.represent(
-        img_path=dummy,
-        model_name="ArcFace",
-        detector_backend="skip",
-        enforce_detection=False,
-    )
+    app.get(dummy)
 
 
-def _try_retinaface() -> None:
-    """Aciona download e carregamento do RetinaFace — usado na extração real de embeddings."""
-    import numpy as np
-    from deepface import DeepFace
-    dummy = np.zeros((224, 224, 3), dtype=np.uint8)
-    DeepFace.extract_faces(
-        img_path=dummy,
-        detector_backend="retinaface",
-        enforce_detection=False,
-    )
-
-
-async def _warmup_deepface() -> None:
-    """
-    Pré-aquece ArcFace e RetinaFace garantindo que os pesos sejam válidos.
-
-    Loop de retry com até 5 tentativas por modelo:
-      1. Remove arquivos .h5 inválidos/corrompidos
-      2. Chama DeepFace que aciona o download se necessário
-      3. Após falha, remove arquivo corrompido gerado nesta tentativa antes de retry
-    """
+async def _warmup_facial() -> None:
+    """Pré-aquece InsightFace em background para que o primeiro request seja rápido."""
     import asyncio
-
-    MAX_ATTEMPTS = 5
-
-    async def _warmup_model(name: str, fn: object) -> None:
-        for attempt in range(1, MAX_ATTEMPTS + 1):
-            await asyncio.to_thread(_purge_invalid_weights)
-            try:
-                await asyncio.to_thread(fn)  # type: ignore[arg-type]
-                log.info("deepface.warmup.model_ok", model=name, attempt=attempt)
-                return
-            except Exception as exc:
-                log.warning(
-                    "deepface.warmup.attempt_failed",
-                    model=name,
-                    attempt=attempt,
-                    max_attempts=MAX_ATTEMPTS,
-                    error=str(exc),
-                )
-                await asyncio.to_thread(_purge_invalid_weights)
-                if attempt < MAX_ATTEMPTS:
-                    await asyncio.sleep(15 * attempt)
-        log.error("deepface.warmup.exhausted", model=name, max_attempts=MAX_ATTEMPTS)
-
-    await _warmup_model("ArcFace", _try_represent)
-    await _warmup_model("RetinaFace", _try_retinaface)
+    try:
+        await asyncio.to_thread(_load_insightface)
+        log.info("insightface.warmup.ok", model="buffalo_l")
+    except Exception as exc:
+        log.error("insightface.warmup.failed", error=str(exc))
 
 
 @asynccontextmanager
@@ -132,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # imediatamente. O primeiro request facial pode chegar antes do warmup terminar,
     # mas o próprio endpoint trata falhas de carregamento do modelo.
     import asyncio
-    asyncio.create_task(_warmup_deepface())
+    asyncio.create_task(_warmup_facial())
 
     log.info("app.ready")
     yield
