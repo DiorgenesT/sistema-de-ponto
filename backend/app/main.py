@@ -30,29 +30,36 @@ if settings.SENTRY_DSN:
 
 # ---- Lifespan --------------------------------------------------------------
 
-def _load_insightface() -> None:
-    """Carrega modelos InsightFace + ONNX Runtime (download automático na primeira execução)."""
+def _load_facial_models() -> None:
+    """Pré-carrega modelos OpenCV (FaceDetectorYN + FaceRecognizerSF)."""
+    import os
+    import cv2
     import numpy as np
-    from insightface.app import FaceAnalysis
-    app = FaceAnalysis(
-        name="buffalo_l",
-        providers=["CPUExecutionProvider"],
-        allowed_modules=["detection", "recognition"],
+
+    models_dir = os.environ.get("MODELS_DIR", "/app/models")
+    detector = cv2.FaceDetectorYN.create(
+        os.path.join(models_dir, "face_detection_yunet_2023mar.onnx"),
+        "",
+        (320, 320),
     )
-    app.prepare(ctx_id=0, det_size=(640, 640))
-    # Passa imagem dummy para garantir que os grafos ONNX estão compilados
-    dummy = np.zeros((112, 112, 3), dtype=np.uint8)
-    app.get(dummy)
+    cv2.FaceRecognizerSF.create(
+        os.path.join(models_dir, "face_recognition_sface_2021dec.onnx"),
+        "",
+    )
+    # Warmup com imagem dummy para compilar o grafo ONNX interno
+    dummy = np.zeros((320, 320, 3), dtype=np.uint8)
+    detector.setInputSize((320, 320))
+    detector.detect(dummy)
 
 
 async def _warmup_facial() -> None:
-    """Pré-aquece InsightFace em background para que o primeiro request seja rápido."""
+    """Pré-aquece modelos faciais em background."""
     import asyncio
     try:
-        await asyncio.to_thread(_load_insightface)
-        log.info("insightface.warmup.ok", model="buffalo_l")
+        await asyncio.to_thread(_load_facial_models)
+        log.info("facial_models.warmup.ok", model="opencv_sface")
     except Exception as exc:
-        log.error("insightface.warmup.failed", error=str(exc))
+        log.error("facial_models.warmup.failed", error=str(exc))
 
 
 @asynccontextmanager

@@ -29,9 +29,8 @@ dependencies = [
     # Filas
     "celery[redis]>=5.4.0",
     "redis>=5.2.0",
-    # Reconhecimento facial (InsightFace + ONNX Runtime — sem TensorFlow)
-    "insightface>=0.7.3",
-    "onnxruntime>=1.17.0",
+    # Reconhecimento facial via OpenCV DNN (FaceDetectorYN + FaceRecognizerSF)
+    # Modelos ONNX embutidos na imagem Docker — sem TensorFlow, sem compilação
     "opencv-python-headless>=4.10.0",
     # NTP (Portaria 671)
     "ntplib>=0.4.0",

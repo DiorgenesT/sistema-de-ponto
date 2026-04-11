@@ -1,13 +1,19 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Dependências de sistema para OpenCV e InsightFace/ONNX Runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
-    libgomp1 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Baixa modelos OpenCV para reconhecimento facial (~38 MB total, embutidos na imagem)
+RUN mkdir -p /app/models \
+    && curl -fsSL -o /app/models/face_detection_yunet_2023mar.onnx \
+       "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
+    && curl -fsSL -o /app/models/face_recognition_sface_2021dec.onnx \
+       "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
 
 COPY pyproject.toml .
 
