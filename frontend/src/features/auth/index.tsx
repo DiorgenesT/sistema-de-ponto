@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/shared/lib/api";
 import { useAuthStore } from "@/store/auth";
@@ -59,8 +60,14 @@ export default function AuthPage() {
 
       const isPrivileged = ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(employee.role);
       navigate(isPrivileged ? "/admin" : "/portal");
-    } catch {
-      setServerError("E-mail ou senha inválidos.");
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setServerError("E-mail ou senha inválidos.");
+      } else if (axios.isAxiosError(err) && !err.response) {
+        setServerError("Não foi possível conectar ao servidor. Tente novamente em instantes.");
+      } else {
+        setServerError("Erro inesperado. Tente novamente.");
+      }
     }
   }
 
