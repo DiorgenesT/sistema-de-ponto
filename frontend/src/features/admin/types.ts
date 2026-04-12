@@ -65,6 +65,7 @@ export interface EmployeeCreatePayload {
   role: EmployeeRole;
   department?: string;
   hired_at?: string;
+  work_schedule_id?: string;
   password: string;
 }
 

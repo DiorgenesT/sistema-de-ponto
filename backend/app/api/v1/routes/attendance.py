@@ -78,6 +78,25 @@ async def register_attendance(
     return response
 
 
+@router.get("/validate-code")
+async def validate_terminal_code(
+    code: str,
+    db: DBSession,
+    device: AuthorizedDevice = Depends(require_authorized_device),
+) -> dict:
+    """
+    Valida código do terminal e retorna nome do funcionário.
+    Requer: X-Device-Token válido. Não requer JWT.
+    Usado pelo terminal antes de abrir a câmera.
+    """
+    emp_repo = EmployeeRepository(db)
+    employee = await emp_repo.get_by_terminal_code(code, device.company_id)
+    if not employee or not employee.is_active:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail={"code": "INVALID_CODE", "message": "Código não encontrado."})
+    return {"employee_id": str(employee.id), "full_name": employee.full_name}
+
+
 @router.get("/me", response_model=AttendanceListResponse)
 async def get_my_attendance(
     db: DBSession,

@@ -4,12 +4,13 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AttendanceCamera } from "./components/AttendanceCamera";
 import { AttendanceResult } from "./components/AttendanceResult";
+import { validateTerminalCode } from "./hooks/useValidateCode";
 import { useAuthStore } from "@/store/auth";
 import type { AttendanceResponse } from "./types";
 
 type PageState =
   | { view: "code" }
-  | { view: "camera"; terminalCode: string }
+  | { view: "camera"; terminalCode: string; employeeName: string }
   | { view: "success"; record: AttendanceResponse }
   | { view: "error"; message: string };
 
@@ -22,8 +23,8 @@ export default function AttendancePage() {
     return <TerminalLocked />;
   }
 
-  const handleCodeConfirmed = (code: string) => {
-    setState({ view: "camera", terminalCode: code });
+  const handleCodeConfirmed = (code: string, employeeName: string) => {
+    setState({ view: "camera", terminalCode: code, employeeName });
   };
 
   const handleSuccess = (record: AttendanceResponse) => {
@@ -65,10 +66,9 @@ export default function AttendancePage() {
         {state.view === "camera" && (
           <>
             <div className="text-center">
-              <h1 className="text-xl font-semibold text-white">Verificação facial</h1>
-              <p className="mt-1 text-sm text-gray-400">
-                Código <span className="font-mono font-bold text-white">{state.terminalCode}</span> — olhe para a câmera
-              </p>
+              <p className="text-sm font-medium text-gray-400">Olá,</p>
+              <h1 className="text-2xl font-bold text-white">{state.employeeName}</h1>
+              <p className="mt-1 text-sm text-gray-400">Olhe para a câmera para registrar o ponto</p>
             </div>
             <AttendanceCamera
               terminalCode={state.terminalCode}
@@ -109,29 +109,59 @@ export default function AttendancePage() {
 
 // ---- Tela de entrada do código -----------------------------------------------
 
-function CodeEntry({ onConfirm }: { onConfirm: (code: string) => void }) {
+type CodeStatus = "idle" | "loading" | "error";
+
+function CodeEntry({ onConfirm }: { onConfirm: (code: string, employeeName: string) => void }) {
   const [digits, setDigits] = useState<string[]>([]);
+  const [status, setStatus] = useState<CodeStatus>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
   const MAX_DIGITS = 4;
 
   const handleKey = (key: string) => {
+    if (status === "loading") return;
     if (key === "C") {
       setDigits([]);
+      setStatus("idle");
+      setErrorMsg("");
       return;
     }
     if (key === "⌫") {
       setDigits((d) => d.slice(0, -1));
+      if (status === "error") { setStatus("idle"); setErrorMsg(""); }
       return;
     }
     if (digits.length >= MAX_DIGITS) return;
     const next = [...digits, key];
     setDigits(next);
+    setStatus("idle");
+    setErrorMsg("");
+
     if (next.length === MAX_DIGITS) {
-      setTimeout(() => {
-        onConfirm(next.join(""));
-        setDigits([]);
-      }, 200);
+      void submitCode(next.join(""));
     }
   };
+
+  async function submitCode(code: string) {
+    setStatus("loading");
+    try {
+      const employee = await validateTerminalCode(code);
+      // breve pausa para o usuário ver o código completo antes de abrir câmera
+      setTimeout(() => {
+        onConfirm(code, employee.full_name);
+        setDigits([]);
+        setStatus("idle");
+      }, 300);
+    } catch {
+      setStatus("error");
+      setErrorMsg("Código inválido. Tente novamente.");
+      // limpar dígitos após 1.5s para nova tentativa
+      setTimeout(() => {
+        setDigits([]);
+        setStatus("idle");
+        setErrorMsg("");
+      }, 1500);
+    }
+  }
 
   const KEYS = [
     ["1", "2", "3"],
@@ -148,15 +178,29 @@ function CodeEntry({ onConfirm }: { onConfirm: (code: string) => void }) {
       </div>
 
       {/* Indicadores de dígitos */}
-      <div className="flex gap-4">
-        {Array.from({ length: MAX_DIGITS }).map((_, i) => (
-          <div
-            key={i}
-            className={`h-4 w-4 rounded-full transition-colors duration-150 ${
-              i < digits.length ? "bg-white" : "bg-gray-700"
-            }`}
-          />
-        ))}
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex gap-4">
+          {Array.from({ length: MAX_DIGITS }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-4 w-4 rounded-full transition-colors duration-150 ${
+                status === "error"
+                  ? "bg-red-500"
+                  : status === "loading"
+                  ? "bg-yellow-400 animate-pulse"
+                  : i < digits.length
+                  ? "bg-white"
+                  : "bg-gray-700"
+              }`}
+            />
+          ))}
+        </div>
+        {status === "loading" && (
+          <p className="text-xs text-gray-400">Verificando...</p>
+        )}
+        {status === "error" && (
+          <p className="text-xs text-red-400">{errorMsg}</p>
+        )}
       </div>
 
       {/* Teclado numérico */}
@@ -165,9 +209,10 @@ function CodeEntry({ onConfirm }: { onConfirm: (code: string) => void }) {
           <button
             key={key}
             onClick={() => handleKey(key)}
+            disabled={status === "loading"}
             className={`
               flex h-16 w-20 items-center justify-center rounded-2xl text-xl font-semibold
-              transition-all duration-100 active:scale-95
+              transition-all duration-100 active:scale-95 disabled:opacity-50
               ${key === "C"
                 ? "bg-red-900/40 text-red-400 hover:bg-red-900/60"
                 : key === "⌫"

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/shared/lib/cn";
 import { useCreateEmployee, useDeleteEmployee, useEmployees, useToggleEmployeeActive } from "../hooks/useEmployees";
+import { useSchedules } from "../hooks/useSchedules";
 import { FaceEnrollModal } from "./FaceEnrollModal";
 import type { Employee, EmployeeRole } from "../types";
 
@@ -25,6 +26,7 @@ const createSchema = z.object({
   department: z.string().optional(),
   registration_number: z.string().optional(),
   hired_at: z.string().optional(),
+  work_schedule_id: z.string().optional(),
 });
 
 type CreateForm = z.infer<typeof createSchema>;
@@ -36,6 +38,7 @@ export function FuncionariosTab() {
   const [enrollTarget, setEnrollTarget] = useState<Employee | null>(null);
 
   const { data, isLoading, isError } = useEmployees(me?.companyId ?? "");
+  const { data: schedules } = useSchedules();
   const createMutation = useCreateEmployee();
   const toggleMutation = useToggleEmployeeActive();
   const deleteMutation = useDeleteEmployee();
@@ -57,6 +60,7 @@ export function FuncionariosTab() {
         department: form.department || undefined,
         registration_number: form.registration_number || undefined,
         hired_at: form.hired_at || undefined,
+        work_schedule_id: form.work_schedule_id || undefined,
       });
       reset();
       setShowForm(false);
@@ -117,6 +121,26 @@ export function FuncionariosTab() {
             </Field>
             <Field label="Data de admissão (opcional)">
               <input type="date" {...register("hired_at")} className={inputCls(false)} />
+            </Field>
+            <Field label="Horário de trabalho (opcional)">
+              <select {...register("work_schedule_id")} className={inputCls(false)}>
+                <option value="">Selecione a escala</option>
+                {schedules?.filter((s) => s.is_active).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.default_start && s.default_end
+                      ? ` — ${s.default_start.slice(0, 5)} às ${s.default_end.slice(0, 5)}`
+                      : s.schedule_type === "12X36"
+                      ? " — 12x36"
+                      : ""}
+                  </option>
+                ))}
+              </select>
+              {(!schedules || schedules.length === 0) && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Nenhuma escala cadastrada. Crie uma em Configurações.
+                </p>
+              )}
             </Field>
 
             {formError && (
