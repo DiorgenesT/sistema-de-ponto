@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
+import { DashboardTab } from "./components/DashboardTab";
 import { FuncionariosTab } from "./components/FuncionariosTab";
+import { RegistrosTab } from "./components/RegistrosTab";
+import { BancoHorasTab } from "./components/BancoHorasTab";
 import { DispositivosTab } from "./components/DispositivosTab";
 import { JustificativasTab } from "./components/JustificativasTab";
 import { RelatoriosTab } from "./components/RelatoriosTab";
 
-type Tab = "employees" | "devices" | "justifications" | "reports";
+type Tab = "dashboard" | "employees" | "registros" | "hour-bank" | "devices" | "justifications" | "reports";
 
 const ROLE_LABELS: Record<string, string> = {
   EMPLOYEE: "Funcionário",
@@ -18,7 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function AdminPage() {
   const navigate = useNavigate();
   const { employee, logout } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<Tab>("employees");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
 
   if (!employee) {
     return <Navigate to="/login" replace />;
@@ -30,7 +33,10 @@ export default function AdminPage() {
   }
 
   const TABS: { id: Tab; label: string; roles: string[] }[] = [
+    { id: "dashboard", label: "Dashboard", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "employees", label: "Funcionários", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
+    { id: "registros", label: "Registros de Ponto", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
+    { id: "hour-bank", label: "Banco de Horas", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "devices", label: "Dispositivos", roles: ["ADMIN", "SUPER_ADMIN"] },
     { id: "justifications", label: "Justificativas", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "reports", label: "Relatórios", roles: ["SUPER_ADMIN"] },
@@ -116,7 +122,10 @@ export default function AdminPage() {
 
       {/* Conteúdo */}
       <main className="mx-auto max-w-6xl px-4 py-6">
+        {activeTab === "dashboard" && <DashboardTab />}
         {activeTab === "employees" && <FuncionariosTab />}
+        {activeTab === "registros" && <RegistrosTab />}
+        {activeTab === "hour-bank" && <BancoHorasTab />}
         {activeTab === "devices" && <DispositivosTab />}
         {activeTab === "justifications" && <JustificativasTab />}
         {activeTab === "reports" && <RelatoriosTab />}

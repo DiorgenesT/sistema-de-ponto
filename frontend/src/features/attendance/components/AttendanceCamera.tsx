@@ -7,13 +7,15 @@ import { FaceOverlay } from "./FaceOverlay";
 import type { AttendanceResponse } from "../types";
 
 interface AttendanceCameraProps {
+  terminalCode: string;
   onSuccess: (record: AttendanceResponse) => void;
   onError: (message: string, code?: string) => void;
+  onCancel: () => void;
 }
 
 const CAPTURE_DELAY_MS = 1500; // aguardar 1.5s após detecção antes de capturar
 
-export function AttendanceCamera({ onSuccess, onError }: AttendanceCameraProps) {
+export function AttendanceCamera({ terminalCode, onSuccess, onError, onCancel }: AttendanceCameraProps) {
   const webcamRef = useRef<Webcam>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -69,6 +71,7 @@ export function AttendanceCamera({ onSuccess, onError }: AttendanceCameraProps) 
       const fp = collectFingerprint();
       const record = await registerMutation.mutateAsync({
         image_b64,
+        terminal_code: terminalCode,
         device_fingerprint: fingerprintToString(fp),
       });
       onSuccess(record);
@@ -101,6 +104,13 @@ export function AttendanceCamera({ onSuccess, onError }: AttendanceCameraProps) 
         className="h-full w-full object-cover"
       />
       <FaceOverlay status={currentStatus} confidence={confidence} />
+      {/* Botão cancelar */}
+      <button
+        onClick={onCancel}
+        className="absolute top-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs text-gray-300 hover:bg-black/70"
+      >
+        ← Código
+      </button>
     </div>
   );
 }

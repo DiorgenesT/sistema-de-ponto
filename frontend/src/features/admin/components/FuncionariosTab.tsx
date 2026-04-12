@@ -157,6 +157,7 @@ export function FuncionariosTab() {
                 <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">E-mail</th>
+                  <th className="px-4 py-3">Cód. Terminal</th>
                   <th className="px-4 py-3">Perfil</th>
                   <th className="px-4 py-3">Depto.</th>
                   <th className="px-4 py-3">Admissão</th>
@@ -169,6 +170,15 @@ export function FuncionariosTab() {
                   <tr key={emp.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{emp.full_name}</td>
                     <td className="px-4 py-3 text-gray-600">{emp.email}</td>
+                    <td className="px-4 py-3">
+                      {emp.terminal_code ? (
+                        <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs font-medium text-gray-700">
+                          {emp.terminal_code}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <RoleBadge role={emp.role} />
                     </td>

@@ -4,13 +4,15 @@ import { useAuthStore } from "@/store/auth";
 import { AttendanceTab } from "./components/AttendanceTab";
 import { HourBankTab } from "./components/HourBankTab";
 import { JustificationsTab } from "./components/JustificationsTab";
+import { PerfilTab } from "./components/PerfilTab";
 
-type Tab = "attendance" | "hour-bank" | "justifications";
+type Tab = "attendance" | "hour-bank" | "justifications" | "profile";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "attendance", label: "Registros de Ponto" },
   { id: "hour-bank", label: "Banco de Horas" },
   { id: "justifications", label: "Justificativas" },
+  { id: "profile", label: "Meu Perfil" },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -105,6 +107,7 @@ export default function EmployeePortalPage() {
         {activeTab === "attendance" && <AttendanceTab />}
         {activeTab === "hour-bank" && <HourBankTab />}
         {activeTab === "justifications" && <JustificationsTab />}
+        {activeTab === "profile" && <PerfilTab />}
       </main>
     </div>
   );

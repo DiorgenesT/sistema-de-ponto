@@ -38,6 +38,20 @@ class JustificationRepository:
         )
         return list(result.scalars().all())
 
+    async def count_pending(self, company_id: uuid.UUID) -> int:
+        """Conta justificativas pendentes da empresa."""
+        from sqlalchemy import func
+        from app.domain.employees.models import Employee
+        result = await self._db.execute(
+            select(func.count(Justification.id))
+            .join(Employee, Justification.employee_id == Employee.id)
+            .where(
+                Employee.company_id == company_id,
+                Justification.status == JustificationStatus.PENDING,
+            )
+        )
+        return result.scalar_one() or 0
+
     async def create(self, justification: Justification) -> Justification:
         self._db.add(justification)
         await self._db.flush()

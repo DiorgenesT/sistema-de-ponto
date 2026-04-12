@@ -32,6 +32,29 @@ class EmployeeRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_terminal_code(self, terminal_code: str, company_id: uuid.UUID) -> Employee | None:
+        """Busca funcionário ativo pelo código do terminal."""
+        result = await self._db.execute(
+            select(Employee).where(
+                Employee.terminal_code == terminal_code,
+                Employee.company_id == company_id,
+                Employee.is_active.is_(True),
+                Employee.deleted_at.is_(None),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def terminal_code_exists(self, terminal_code: str, company_id: uuid.UUID) -> bool:
+        """Verifica se terminal_code já está em uso na empresa."""
+        result = await self._db.execute(
+            select(func.count()).where(
+                Employee.terminal_code == terminal_code,
+                Employee.company_id == company_id,
+                Employee.deleted_at.is_(None),
+            )
+        )
+        return (result.scalar_one() or 0) > 0
+
     async def get_by_cpf_hash(self, cpf_hash: str, company_id: uuid.UUID) -> Employee | None:
         """Busca funcionário por hash do CPF."""
         result = await self._db.execute(

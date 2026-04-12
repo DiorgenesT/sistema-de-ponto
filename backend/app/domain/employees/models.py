@@ -48,6 +48,7 @@ class Employee(Base):
     hired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     terminated_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    terminal_code: Mapped[str | None] = mapped_column(String(6), nullable=True)  # código numérico do terminal
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

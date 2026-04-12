@@ -1,4 +1,5 @@
 import hashlib
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -52,6 +53,8 @@ class EmployeeService:
             from app.domain.employees.exceptions import EmployeeAlreadyExistsError
             raise EmployeeAlreadyExistsError("E-mail já cadastrado nesta empresa.")
 
+        terminal_code = await self._generate_terminal_code(data.company_id)
+
         employee = Employee(
             company_id=data.company_id,
             full_name=data.full_name,
@@ -64,6 +67,7 @@ class EmployeeService:
             work_schedule_id=data.work_schedule_id,
             hired_at=data.hired_at,
             password_hash=hash_password(data.password),
+            terminal_code=terminal_code,
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -138,6 +142,19 @@ class EmployeeService:
         consent = await self._repo.create_consent(consent)
         log.info("employee.consent.granted", employee_id=str(employee_id), version=CURRENT_CONSENT_VERSION)
         return consent
+
+    async def _generate_terminal_code(self, company_id: uuid.UUID) -> str:
+        """Gera código numérico único de 4 dígitos para o terminal."""
+        for _ in range(50):
+            code = str(random.randint(1000, 9999))
+            if not await self._repo.terminal_code_exists(code, company_id):
+                return code
+        # Fallback para 6 dígitos se 4 esgotarem (9000 possibilidades por empresa)
+        for _ in range(100):
+            code = str(random.randint(100000, 999999))
+            if not await self._repo.terminal_code_exists(code, company_id):
+                return code
+        raise RuntimeError("Não foi possível gerar código de terminal único.")
 
     async def verify_consent_active(self, employee_id: uuid.UUID) -> None:
         """

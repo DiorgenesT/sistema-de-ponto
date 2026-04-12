@@ -12,6 +12,34 @@ export interface Employee {
   hired_at: string | null;
   created_at: string;
   has_face: boolean;
+  terminal_code: string | null;
+}
+
+export interface AdminStats {
+  total_employees: number;
+  active_employees: number;
+  employees_with_face: number;
+  today_registrations: number;
+  today_employees_present: number;
+  pending_justifications: number;
+}
+
+export interface AdminAttendanceRecord {
+  id: string;
+  employee_id: string;
+  employee_name: string | null;
+  device_id: string;
+  recorded_at: string;
+  record_type: "IN" | "OUT";
+  facial_confidence: number;
+  is_adjustment: boolean;
+  original_record_id: string | null;
+  created_at: string;
+}
+
+export interface AdminAttendanceListResponse {
+  items: AdminAttendanceRecord[];
+  total: number;
 }
 
 export interface FaceStatus {

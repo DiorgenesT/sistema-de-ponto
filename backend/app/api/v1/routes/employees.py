@@ -81,6 +81,43 @@ async def get_me(current_employee: CurrentEmployee) -> EmployeeResponse:
     return EmployeeResponse.model_validate(current_employee)
 
 
+@router.delete("/me/face", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_face(
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> None:
+    """
+    Remove os dados biométricos do próprio funcionário — exercício do Art. 18 LGPD.
+    Após a exclusão o funcionário não poderá registrar ponto até nova biometria ser cadastrada.
+    """
+    from app.domain.facial.repository import FacialRepository
+    from app.domain.facial.service import FacialService
+
+    employee_repo = EmployeeRepository(db)
+    employee_svc = EmployeeService(employee_repo)
+    facial_repo = FacialRepository(db)
+    facial_svc = FacialService(facial_repo, employee_svc)
+    await facial_svc.delete_biometric_data(current_employee.id)
+
+
+@router.get("/me/face")
+async def get_my_face_status(
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> dict:
+    """Retorna se o funcionário autenticado tem biometria cadastrada."""
+    from app.domain.facial.repository import FacialRepository
+
+    facial_repo = FacialRepository(db)
+    embedding = await facial_repo.get_active_by_employee(current_employee.id)
+    if not embedding:
+        return {"enrolled": False}
+    return {
+        "enrolled": True,
+        "enrolled_at": embedding.created_at.isoformat(),
+    }
+
+
 @router.patch("/{employee_id}", response_model=EmployeeResponse)
 async def update_employee(
     employee_id: uuid.UUID,

@@ -4,6 +4,7 @@ import type { AttendanceResponse } from "../types";
 
 interface RegisterPayload {
   image_b64: string;
+  terminal_code?: string;
   device_fingerprint?: string;
 }
 

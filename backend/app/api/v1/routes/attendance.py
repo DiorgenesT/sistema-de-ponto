@@ -50,8 +50,20 @@ async def register_attendance(
     svc = _build_service(db)
     ip_address = request.client.host if request.client else "unknown"
 
+    employee_id = body.employee_id
+
+    # Resolver terminal_code → employee_id para verificação 1:1
+    if employee_id is None and body.terminal_code is not None:
+        from app.core.exceptions import EmployeeNotFoundError
+        emp = await EmployeeRepository(db).get_by_terminal_code(
+            body.terminal_code, device.company_id
+        )
+        if not emp:
+            raise EmployeeNotFoundError("Código de funcionário não encontrado.")
+        employee_id = emp.id
+
     record = await svc.register(
-        employee_id=body.employee_id,  # None → identificação 1:N no kiosk
+        employee_id=employee_id,  # None → identificação 1:N; UUID → verificação 1:1
         image_b64=body.image_b64,
         device=device,
         ip_address=ip_address,

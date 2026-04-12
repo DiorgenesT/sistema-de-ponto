@@ -41,6 +41,7 @@ class EmployeeResponse(BaseModel):
     hired_at: date | None
     created_at: datetime
     has_face: bool = False
+    terminal_code: str | None = None
 
     model_config = {"from_attributes": True}
 
