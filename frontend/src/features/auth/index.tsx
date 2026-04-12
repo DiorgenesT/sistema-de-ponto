@@ -78,37 +78,32 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4">
+      {/* Background decorativo */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/4 top-1/4 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-600/10 blur-3xl" />
+        <div className="absolute right-1/4 bottom-1/4 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-indigo-600/10 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm space-y-7">
+        {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg">
-            <svg
-              className="h-9 w-9 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-              />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 shadow-lg shadow-primary-900/40">
+            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Sistema de Ponto</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Acesso ao portal e painel administrativo
+          <h1 className="text-2xl font-bold text-white tracking-tight">PontoFácil</h1>
+          <p className="mt-1 text-sm text-gray-400">
+            Portal e painel administrativo
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        {/* Card do formulário */}
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm shadow-2xl">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div>
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="username" className="block text-xs font-medium text-gray-300 mb-1.5">
                 E-mail
               </label>
               <input
@@ -117,25 +112,20 @@ export default function AuthPage() {
                 autoComplete="email"
                 {...register("username")}
                 className={cn(
-                  "mt-1 block w-full rounded-lg border px-3 py-2.5 text-sm shadow-sm transition focus:outline-none focus:ring-2",
+                  "block w-full rounded-lg border bg-white/10 px-3.5 py-2.5 text-sm text-white placeholder-gray-500 shadow-sm transition focus:outline-none focus:ring-2",
                   errors.username
-                    ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                    : "border-gray-300 focus:border-primary-500 focus:ring-primary-200"
+                    ? "border-red-500/50 focus:border-red-400 focus:ring-red-400/20"
+                    : "border-white/10 focus:border-primary-500 focus:ring-primary-500/20"
                 )}
                 placeholder="voce@empresa.com"
               />
               {errors.username && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.username.message}
-                </p>
+                <p className="mt-1 text-xs text-red-400">{errors.username.message}</p>
               )}
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="password" className="block text-xs font-medium text-gray-300 mb-1.5">
                 Senha
               </label>
               <input
@@ -144,22 +134,23 @@ export default function AuthPage() {
                 autoComplete="current-password"
                 {...register("password")}
                 className={cn(
-                  "mt-1 block w-full rounded-lg border px-3 py-2.5 text-sm shadow-sm transition focus:outline-none focus:ring-2",
+                  "block w-full rounded-lg border bg-white/10 px-3.5 py-2.5 text-sm text-white placeholder-gray-500 shadow-sm transition focus:outline-none focus:ring-2",
                   errors.password
-                    ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                    : "border-gray-300 focus:border-primary-500 focus:ring-primary-200"
+                    ? "border-red-500/50 focus:border-red-400 focus:ring-red-400/20"
+                    : "border-white/10 focus:border-primary-500 focus:ring-primary-500/20"
                 )}
                 placeholder="••••••••"
               />
               {errors.password && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.password.message}
-                </p>
+                <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>
               )}
             </div>
 
             {serverError && (
-              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-3 text-sm text-red-300">
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
                 {serverError}
               </div>
             )}
@@ -167,13 +158,13 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex w-full items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-primary-900/30 transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Entrando…
-                </span>
+                </>
               ) : (
                 "Entrar"
               )}
@@ -181,8 +172,8 @@ export default function AuthPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400">
-          Para registrar ponto, use o terminal biométrico na tela principal.
+        <p className="text-center text-xs text-gray-600">
+          Para registrar ponto, use o terminal biométrico.
         </p>
       </div>
     </div>

@@ -191,7 +191,8 @@ export function DispositivosTab() {
           <div className="py-12 text-center text-sm text-gray-400">Nenhum dispositivo cadastrado.</div>
         )}
         {devices && devices.length > 0 && (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="min-w-[520px] w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 <th className="px-4 py-3">Rótulo</th>
@@ -215,6 +216,7 @@ export function DispositivosTab() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

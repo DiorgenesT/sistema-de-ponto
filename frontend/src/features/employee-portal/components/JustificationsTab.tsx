@@ -188,22 +188,24 @@ export function JustificationsTab() {
         )}
 
         {data && data.length > 0 && (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Data ref.</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Descrição</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Enviado em</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.map((j) => (
-                <JustificationRow key={j.id} justification={j} />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="min-w-[520px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3">Data ref.</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Descrição</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Enviado em</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.map((j) => (
+                  <JustificationRow key={j.id} justification={j} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

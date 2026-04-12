@@ -113,29 +113,31 @@ export function JustificativasTab() {
           </div>
         )}
         {data && data.length > 0 && (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Funcionário</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Data de referência</th>
-                <th className="px-4 py-3">Descrição</th>
-                <th className="px-4 py-3">Solicitado em</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.map((j) => (
-                <JustificationRow
-                  key={j.id}
-                  justification={j}
-                  isBeingReviewed={reviewing?.id === j.id}
-                  onApprove={() => startReview(j.id, "APPROVED")}
-                  onReject={() => startReview(j.id, "REJECTED")}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="min-w-[680px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3">Funcionário</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3">Descrição</th>
+                  <th className="px-4 py-3">Solicitado</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.map((j) => (
+                  <JustificationRow
+                    key={j.id}
+                    justification={j}
+                    isBeingReviewed={reviewing?.id === j.id}
+                    onApprove={() => startReview(j.id, "APPROVED")}
+                    onReject={() => startReview(j.id, "REJECTED")}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
