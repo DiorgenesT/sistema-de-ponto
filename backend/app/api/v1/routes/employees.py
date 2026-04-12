@@ -1,10 +1,13 @@
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentEmployee, DBSession, require_admin
+
+log = structlog.get_logger(__name__)
 from app.domain.employees.repository import EmployeeRepository
 from app.domain.employees.schemas import (
     EmployeeCreateRequest,
