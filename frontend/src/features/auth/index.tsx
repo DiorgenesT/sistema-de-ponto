@@ -19,6 +19,7 @@ interface LoginResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  must_change_password: boolean;
   employee: {
     id: string;
     full_name: string;
@@ -49,7 +50,7 @@ export default function AuthPage() {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
-      const { access_token, employee } = response.data;
+      const { access_token, employee, must_change_password } = response.data;
       setTokens(access_token);
       setEmployee({
         id: employee.id,
@@ -57,6 +58,11 @@ export default function AuthPage() {
         role: employee.role,
         companyId: employee.company_id,
       });
+
+      if (must_change_password) {
+        navigate("/change-password");
+        return;
+      }
 
       const isPrivileged = ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(employee.role);
       navigate(isPrivileged ? "/admin" : "/portal");

@@ -83,10 +83,18 @@ export function PerfilTab() {
             </div>
           ) : faceStatus?.enrolled ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 text-green-600">
-                  ✓
-                </span>
+              <div className="flex items-center gap-4">
+                {faceStatus.photo_b64 ? (
+                  <img
+                    src={`data:image/jpeg;base64,${faceStatus.photo_b64}`}
+                    alt="Foto de cadastro facial"
+                    className="h-16 w-16 rounded-xl object-cover ring-2 ring-green-200"
+                  />
+                ) : (
+                  <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-green-100 text-2xl text-green-600">
+                    ✓
+                  </span>
+                )}
                 <div>
                   <p className="text-sm font-medium text-gray-800">Biometria cadastrada</p>
                   {faceStatus.enrolled_at && (

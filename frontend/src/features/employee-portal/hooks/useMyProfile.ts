@@ -4,6 +4,7 @@ import { api } from "@/shared/lib/api";
 interface FaceStatus {
   enrolled: boolean;
   enrolled_at?: string;
+  photo_b64?: string | null;
 }
 
 interface EmployeeMe {

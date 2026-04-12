@@ -37,6 +37,9 @@ export function FuncionariosTab() {
   const [formError, setFormError] = useState<string | null>(null);
   const [enrollTarget, setEnrollTarget] = useState<Employee | null>(null);
 
+  const [resetTarget, setResetTarget] = useState<Employee | null>(null);
+  const [resetResult, setResetResult] = useState<{ name: string; tempPassword: string } | null>(null);
+
   const { data, isLoading, isError } = useEmployees(me?.companyId ?? "");
   const { data: schedules } = useSchedules();
   const createMutation = useCreateEmployee();
@@ -240,6 +243,12 @@ export function FuncionariosTab() {
                               {emp.is_active ? "Desativar" : "Ativar"}
                             </button>
                             <button
+                              onClick={() => setResetTarget(emp)}
+                              className="rounded px-2.5 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-800"
+                            >
+                              Resetar senha
+                            </button>
+                            <button
                               onClick={() => {
                                 if (confirm(`Excluir permanentemente "${emp.full_name}"? Esta ação não pode ser desfeita.`)) {
                                   void deleteMutation.mutateAsync(emp.id);
@@ -272,6 +281,98 @@ export function FuncionariosTab() {
           onClose={() => setEnrollTarget(null)}
         />
       )}
+
+      {resetTarget && (
+        <ResetPasswordModal
+          employee={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onSuccess={(tempPassword) => {
+            setResetResult({ name: resetTarget.full_name, tempPassword });
+            setResetTarget(null);
+          }}
+        />
+      )}
+
+      {resetResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <p className="text-sm font-semibold text-gray-800">Senha resetada com sucesso</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Informe a senha temporária abaixo ao funcionário. Ele será obrigado a trocá-la no próximo login.
+            </p>
+            <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-200">
+              <p className="text-xs text-amber-600">{resetResult.name}</p>
+              <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-amber-800">
+                {resetResult.tempPassword}
+              </p>
+            </div>
+            <button
+              onClick={() => setResetResult(null)}
+              className="mt-4 w-full rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResetPasswordModal({
+  employee,
+  onClose,
+  onSuccess,
+}: {
+  employee: Employee;
+  onClose: () => void;
+  onSuccess: (tempPassword: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleReset() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { api } = await import("@/shared/lib/api");
+      const { data } = await api.post<{ temp_password: string }>(`/employees/${employee.id}/reset-password`);
+      onSuccess(data.temp_password);
+    } catch {
+      setError("Erro ao resetar senha. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+        <p className="text-sm font-semibold text-gray-800">Resetar senha</p>
+        <p className="mt-2 text-sm text-gray-600">
+          Uma senha temporária será gerada para <strong>{employee.full_name}</strong>. O funcionário deverá
+          trocá-la no próximo login.
+        </p>
+        {error && (
+          <p className="mt-3 text-xs text-red-600">{error}</p>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => void handleReset()}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+          >
+            {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+            Gerar senha temporária
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

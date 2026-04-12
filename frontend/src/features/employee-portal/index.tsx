@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { AttendanceTab } from "./components/AttendanceTab";
 import { HourBankTab } from "./components/HourBankTab";
@@ -28,8 +28,7 @@ export default function EmployeePortalPage() {
   const { employee, logout } = useAuthStore();
 
   if (!employee) {
-    navigate("/login", { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   function handleLogout() {

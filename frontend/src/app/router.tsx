@@ -30,6 +30,7 @@ const AttendancePage = lazy(() => import("@/features/attendance"));
 const EmployeePortalPage = lazy(() => import("@/features/employee-portal"));
 const AdminPage = lazy(() => import("@/features/admin"));
 const AuthPage = lazy(() => import("@/features/auth"));
+const ChangePasswordPage = lazy(() => import("@/features/auth/ChangePasswordPage"));
 const DeviceCheckPage = lazy(() => import("@/features/device-check"));
 
 function PageLoader() {
@@ -51,6 +52,7 @@ export function AppRouter() {
 
           {/* Auth */}
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
 
           {/* Registro de ponto — tela principal do terminal */}
           <Route path="/attendance" element={<AttendancePage />} />

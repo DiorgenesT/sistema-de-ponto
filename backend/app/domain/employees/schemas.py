@@ -42,6 +42,7 @@ class EmployeeResponse(BaseModel):
     created_at: datetime
     has_face: bool = False
     terminal_code: str | None = None
+    must_change_password: bool = False
 
     model_config = {"from_attributes": True}
 

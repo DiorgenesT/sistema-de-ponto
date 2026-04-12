@@ -114,7 +114,8 @@ async def get_my_face_status(
         return {"enrolled": False}
     return {
         "enrolled": True,
-        "enrolled_at": embedding.created_at.isoformat(),
+        "enrolled_at": embedding.enrolled_at.isoformat(),
+        "photo_b64": embedding.enrollment_photo,
     }
 
 
@@ -236,6 +237,40 @@ async def delete_face(
     facial_svc = FacialService(facial_repo, employee_svc)
 
     await facial_svc.delete_biometric_data(employee_id)
+
+
+@router.post("/{employee_id}/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    employee_id: uuid.UUID,
+    db: DBSession,
+    current_employee: CurrentEmployee,
+) -> dict:
+    """
+    Reseta a senha de um funcionário para uma senha temporária e exige troca no próximo login.
+    Requer ADMIN ou SUPER_ADMIN.
+    """
+    await require_admin(current_employee)
+
+    from app.core.security import hash_password
+    import secrets
+    import string
+
+    repo = EmployeeRepository(db)
+    employee = await repo.get_by_id(employee_id)
+    if not employee:
+        from app.core.exceptions import EmployeeNotFoundError
+        raise EmployeeNotFoundError()
+
+    # Gera senha temporária legível: 3 palavras de 4 chars + número
+    alphabet = string.ascii_letters + string.digits
+    temp_password = "".join(secrets.choice(alphabet) for _ in range(10))
+
+    employee.password_hash = hash_password(temp_password)
+    employee.must_change_password = True
+    await db.commit()
+
+    log.info("auth.password_reset", employee_id=str(employee_id), reset_by=str(current_employee.id))
+    return {"temp_password": temp_password, "must_change_password": True}
 
 
 @router.post("/{employee_id}/consent", status_code=status.HTTP_201_CREATED)

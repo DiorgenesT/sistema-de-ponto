@@ -81,6 +81,7 @@ async def login(
         "refresh_token": raw_refresh,
         "token_type": "bearer",
         "expires_in": 15 * 60,
+        "must_change_password": employee.must_change_password,
         "employee": {
             "id": str(employee.id),
             "full_name": employee.full_name,
@@ -154,6 +155,49 @@ async def refresh_token(
         "token_type": "bearer",
         "expires_in": 15 * 60,
     }
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def change_password(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Troca a senha do funcionário autenticado.
+    Obrigatório no primeiro login (must_change_password=true).
+    """
+    from pydantic import BaseModel
+    from app.core.security import hash_password, decode_access_token
+    from app.domain.employees.repository import EmployeeRepository
+    from fastapi import HTTPException
+    import uuid
+
+    class ChangePasswordRequest(BaseModel):
+        current_password: str
+        new_password: str
+
+    body = ChangePasswordRequest.model_validate(await request.json())
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Nova senha deve ter mínimo 8 caracteres.")
+
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    payload = decode_access_token(token)
+    employee_id = uuid.UUID(payload["sub"])
+
+    repo = EmployeeRepository(db)
+    employee = await repo.get_by_id(employee_id)
+    if not employee or not employee.is_active:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado.")
+
+    if not verify_password(body.current_password, employee.password_hash or ""):
+        raise HTTPException(status_code=400, detail={"code": "WRONG_PASSWORD", "message": "Senha atual incorreta."})
+
+    employee.password_hash = hash_password(body.new_password)
+    employee.must_change_password = False
+    await db.commit()
+    log.info("auth.password_changed", employee_id=str(employee.id))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
