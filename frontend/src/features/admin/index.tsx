@@ -8,8 +8,9 @@ import { BancoHorasTab } from "./components/BancoHorasTab";
 import { DispositivosTab } from "./components/DispositivosTab";
 import { JustificativasTab } from "./components/JustificativasTab";
 import { RelatoriosTab } from "./components/RelatoriosTab";
+import { EscalasTab } from "./components/EscalasTab";
 
-type Tab = "dashboard" | "employees" | "registros" | "hour-bank" | "devices" | "justifications" | "reports";
+type Tab = "dashboard" | "employees" | "registros" | "hour-bank" | "devices" | "justifications" | "reports" | "schedules";
 
 const ROLE_LABELS: Record<string, string> = {
   EMPLOYEE: "Funcionário",
@@ -54,6 +55,11 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
     </svg>
   ),
+  schedules: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+    </svg>
+  ),
 };
 
 export default function AdminPage() {
@@ -75,6 +81,7 @@ export default function AdminPage() {
     { id: "employees", label: "Funcionários", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "registros", label: "Registros", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "hour-bank", label: "Banco de Horas", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
+    { id: "schedules", label: "Escalas", roles: ["ADMIN", "SUPER_ADMIN"] },
     { id: "devices", label: "Dispositivos", roles: ["ADMIN", "SUPER_ADMIN"] },
     { id: "justifications", label: "Justificativas", roles: ["MANAGER", "ADMIN", "SUPER_ADMIN"] },
     { id: "reports", label: "Relatórios", roles: ["SUPER_ADMIN"] },
@@ -179,6 +186,7 @@ export default function AdminPage() {
         {activeTab === "employees" && <FuncionariosTab />}
         {activeTab === "registros" && <RegistrosTab />}
         {activeTab === "hour-bank" && <BancoHorasTab />}
+        {activeTab === "schedules" && <EscalasTab />}
         {activeTab === "devices" && <DispositivosTab />}
         {activeTab === "justifications" && <JustificativasTab />}
         {activeTab === "reports" && <RelatoriosTab />}

@@ -275,7 +275,7 @@ export function FuncionariosTab() {
                         {emp.hired_at ? format(new Date(emp.hired_at + "T00:00:00"), "dd/MM/yyyy") : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge active={emp.is_active} hasFace={emp.has_face} />
+                        <StatusBadge active={emp.is_active} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -570,26 +570,16 @@ function RoleBadge({ role }: { role: EmployeeRole }) {
   );
 }
 
-function StatusBadge({ active, hasFace }: { active: boolean; hasFace?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {active ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200 whitespace-nowrap">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-          Ativo
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 whitespace-nowrap">
-          <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-          Inativo
-        </span>
-      )}
-      {hasFace && (
-        <span className="inline-flex items-center gap-1 text-xs text-green-600 whitespace-nowrap">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-          Biometria ok
-        </span>
-      )}
-    </div>
+function StatusBadge({ active }: { active: boolean }) {
+  return active ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200 whitespace-nowrap">
+      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+      Ativo
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 whitespace-nowrap">
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+      Inativo
+    </span>
   );
 }

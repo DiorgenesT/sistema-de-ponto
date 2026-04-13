@@ -32,6 +32,7 @@ class JustificationService:
             justification_type=data.justification_type,
             reference_date=data.reference_date,
             description=data.description,
+            attachment_path=data.attachment_b64 if data.attachment_b64 else None,
             status=JustificationStatus.PENDING,
             created_at=get_current_time(),
         )

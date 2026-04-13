@@ -11,6 +11,7 @@ class JustificationCreateRequest(BaseModel):
     justification_type: JustificationType
     reference_date: date
     description: str = Field(..., min_length=10, max_length=1000)
+    attachment_b64: str | None = Field(None, description="Arquivo anexo em base64 (ex: atestado)")
 
 
 class JustificationReviewRequest(BaseModel):
@@ -25,6 +26,7 @@ class JustificationResponse(BaseModel):
     justification_type: JustificationType
     reference_date: date
     description: str
+    attachment_path: str | None = None
     status: JustificationStatus
     reviewed_by: uuid.UUID | None
     reviewed_at: datetime | None

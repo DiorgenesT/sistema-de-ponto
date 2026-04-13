@@ -68,6 +68,7 @@ export interface Justification {
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_notes: string | null;
+  attachment_path: string | null;
   created_at: string;
 }
 
@@ -76,4 +77,5 @@ export interface JustificationCreatePayload {
   justification_type: JustificationType;
   reference_date: string;
   description: string;
+  attachment_b64?: string;
 }
