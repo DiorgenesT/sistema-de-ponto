@@ -8,6 +8,8 @@ export interface WorkSchedule {
   default_start: string | null;
   default_end: string | null;
   daily_minutes: number;
+  workdays_mask: number;
+  description: string | null;
   is_active: boolean;
 }
 
@@ -18,6 +20,8 @@ export interface WorkScheduleCreatePayload {
   default_start?: string;
   default_end?: string;
   daily_minutes: number;
+  workdays_mask?: number;
+  description?: string;
 }
 
 export function useSchedules() {
