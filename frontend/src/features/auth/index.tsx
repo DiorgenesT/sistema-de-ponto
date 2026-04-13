@@ -25,6 +25,8 @@ interface LoginResponse {
     full_name: string;
     role: "EMPLOYEE" | "MANAGER" | "ADMIN" | "SUPER_ADMIN";
     company_id: string;
+    company_name: string;
+    company_cnpj: string;
   };
 }
 
@@ -57,6 +59,8 @@ export default function AuthPage() {
         fullName: employee.full_name,
         role: employee.role,
         companyId: employee.company_id,
+        companyName: employee.company_name,
+        companyCnpj: employee.company_cnpj,
       });
 
       if (must_change_password) {

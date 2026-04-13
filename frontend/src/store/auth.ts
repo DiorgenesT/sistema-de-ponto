@@ -10,6 +10,8 @@ interface AuthState {
     fullName: string;
     role: "EMPLOYEE" | "MANAGER" | "ADMIN" | "SUPER_ADMIN";
     companyId: string;
+    companyName: string;
+    companyCnpj: string;
   } | null;
   isAuthenticated: boolean;
 

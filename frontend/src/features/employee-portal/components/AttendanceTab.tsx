@@ -4,6 +4,8 @@ import { ptBR } from "date-fns/locale";
 import { useMyAttendance } from "../hooks/useMyAttendance";
 import type { AttendanceRecord } from "../types";
 import { cn } from "@/shared/lib/cn";
+import { useAuthStore } from "@/store/auth";
+import { openEspelhoPDF } from "@/shared/lib/espelho-pdf";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -31,7 +33,23 @@ export function AttendanceTab() {
   const [start, setStart] = useState(() => startOfMonth(today));
   const [end,   setEnd]   = useState(() => endOfMonth(today));
 
+  const { employee: me } = useAuthStore();
   const { data, isLoading, isError } = useMyAttendance(start, end);
+
+  function handleExportEspelho() {
+    if (!me || !data) return;
+    openEspelhoPDF({
+      companyName: me.companyName,
+      companyCnpj: me.companyCnpj,
+      employeeName: me.fullName,
+      year:  start.getFullYear(),
+      month: start.getMonth() + 1,
+      punches: data.items.map(r => ({
+        recorded_at: r.recorded_at,
+        record_type: r.record_type,
+      })),
+    });
+  }
 
   const grouped = data ? groupByDate(data.items) : [];
 
@@ -60,9 +78,23 @@ export function AttendanceTab() {
           </div>
         </div>
         {data && (
-          <span className="rounded-xl bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-200">
-            {data.total} {data.total === 1 ? "marcação" : "marcações"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-xl bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-200">
+              {data.total} {data.total === 1 ? "marcação" : "marcações"}
+            </span>
+            {data.items.length > 0 && (
+              <button
+                onClick={handleExportEspelho}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                title="Exportar Espelho de Ponto em PDF"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+                Espelho PDF
+              </button>
+            )}
+          </div>
         )}
       </div>
 

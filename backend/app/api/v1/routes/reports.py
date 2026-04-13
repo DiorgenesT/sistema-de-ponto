@@ -101,23 +101,38 @@ async def get_afd_status(task_id: str, current_employee: CurrentEmployee) -> dic
 
 async def _build_afd_content(db, company_id: uuid.UUID, start: date, end: date) -> str:
     """
-    Monta conteúdo do AFD no formato fixo da Portaria 671/2021.
-    Tipo 1: Header — Tipo 2: Registros — Tipo 9: Trailer
+    Monta conteúdo do AFD no formato fixo da Portaria 671/2021, Anexo I.
+
+    Tipo 1 (Header):  1 + data(8) + hora(6) + cnpj(14) + razao_social(150) + cei(12) + nsr(9)
+    Tipo 2 (Marcação): 2 + data(8) + hora(4) + pis(11) + nsr(9)
+    Tipo 9 (Trailer): 9 + total_tipo2(9) + branco(352)
     """
     from app.domain.attendance.models import AttendanceRecord
-    from app.domain.employees.models import Employee
+    from app.domain.employees.models import Company, Employee
     from sqlalchemy import select
+
+    # Busca dados da empresa para o header
+    company_result = await db.execute(
+        select(Company).where(Company.id == company_id).limit(1)
+    )
+    company = company_result.scalar_one_or_none()
+    cnpj_digits = (company.cnpj if company else "").replace(".", "").replace("/", "").replace("-", "")
+    cnpj_digits = cnpj_digits[:14].zfill(14)
+    razao_social = ((company.name if company else "") + " " * 150)[:150]
 
     lines: list[str] = []
 
     now = datetime.now(timezone.utc)
+    # Registro tipo 1 — cabeçalho (tamanho fixo: 1+8+6+14+150+12+9 = 200 chars)
     lines.append(
         "1"
-        + now.strftime("%d%m%Y")
-        + now.strftime("%H%M%S")
-        + str(company_id).replace("-", "")[:14].ljust(14)
-        + " " * 49
-        + "001"
+        + now.strftime("%d%m%Y")   # 8 — data de geração
+        + now.strftime("%H%M%S")   # 6 — hora de geração
+        + cnpj_digits              # 14 — CNPJ empregador
+        + razao_social             # 150 — razão social
+        + " " * 12                 # 12 — CEI (opcional)
+        + "001"                    # 9 — NSR (número sequencial de registro)
+        + " " * 20                 # reservado
     )
 
     result = await db.execute(
@@ -127,23 +142,34 @@ async def _build_afd_content(db, company_id: uuid.UUID, start: date, end: date) 
             Employee.company_id == company_id,
             AttendanceRecord.recorded_at >= datetime.combine(start, datetime.min.time()).replace(tzinfo=timezone.utc),
             AttendanceRecord.recorded_at <= datetime.combine(end, datetime.max.time()).replace(tzinfo=timezone.utc),
+            AttendanceRecord.is_adjustment.is_(False),  # apenas registros originais no AFD
         )
         .order_by(AttendanceRecord.recorded_at)
     )
 
-    seq = 1
+    seq = 2  # NSR começa em 002 (001 foi o header)
+    count_tipo2 = 0
     for record, employee in result:
-        pis = (getattr(employee, "pis", None) or "00000000000").ljust(11)[:11]
+        pis = (getattr(employee, "pis", None) or "00000000000").replace(".", "").replace("-", "")
+        pis = pis[:11].zfill(11)
         ts = record.recorded_at
+        # Tipo 2 — marcação (tamanho fixo: 1+8+4+11+9 = 33 chars + reservado até 200)
         lines.append(
             "2"
-            + ts.strftime("%d%m%Y")
-            + ts.strftime("%H%M")
-            + pis
-            + str(seq).zfill(9)
+            + ts.strftime("%d%m%Y")   # 8 — data da marcação
+            + ts.strftime("%H%M")     # 4 — hora da marcação (sem segundos, conforme Portaria)
+            + pis                     # 11 — PIS do trabalhador
+            + str(seq).zfill(9)       # 9 — NSR
+            + " " * (200 - 1 - 8 - 4 - 11 - 9)  # reservado
         )
         seq += 1
+        count_tipo2 += 1
 
-    lines.append("9" + str(seq - 1).zfill(9))
+    # Registro tipo 9 — trailer
+    lines.append(
+        "9"
+        + str(count_tipo2).zfill(9)  # 9 — total de registros tipo 2
+        + " " * 190                  # reservado
+    )
 
     return "\r\n".join(lines) + "\r\n"

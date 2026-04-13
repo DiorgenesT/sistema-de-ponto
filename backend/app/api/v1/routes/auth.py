@@ -74,6 +74,13 @@ async def login(
         user_agent=ua[:255] if ua else None,
     )
 
+    # Busca dados da empresa para o frontend gerar relatórios (Espelho, AFD)
+    from app.domain.employees.models import Company
+    company_result = await db.execute(
+        select(Company).where(Company.id == employee.company_id).limit(1)
+    )
+    company = company_result.scalar_one_or_none()
+
     log.info("auth.login.success", employee_id=str(employee.id))
 
     return {
@@ -87,6 +94,8 @@ async def login(
             "full_name": employee.full_name,
             "role": employee.role.value,
             "company_id": str(employee.company_id),
+            "company_name": company.name if company else "",
+            "company_cnpj": company.cnpj if company else "",
         },
     }
 
