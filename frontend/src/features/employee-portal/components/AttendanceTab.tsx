@@ -1,148 +1,185 @@
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useMyAttendance } from "../hooks/useMyAttendance";
 import type { AttendanceRecord } from "../types";
+import { cn } from "@/shared/lib/cn";
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  if (isToday(d))     return "Hoje";
+  if (isYesterday(d)) return "Ontem";
+  return format(d, "EEEE, dd 'de' MMMM", { locale: ptBR });
+}
+
+function groupByDate(items: AttendanceRecord[]): [string, AttendanceRecord[]][] {
+  const map: Record<string, AttendanceRecord[]> = {};
+  for (const r of items) {
+    const key = r.recorded_at.slice(0, 10);
+    if (!map[key]) map[key] = [];
+    map[key].push(r);
+  }
+  return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
 
 export function AttendanceTab() {
   const today = new Date();
   const [start, setStart] = useState(() => startOfMonth(today));
-  const [end, setEnd] = useState(() => endOfMonth(today));
+  const [end,   setEnd]   = useState(() => endOfMonth(today));
 
   const { data, isLoading, isError } = useMyAttendance(start, end);
 
-  function handleStartChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.value) setStart(new Date(e.target.value + "T00:00:00"));
-  }
-
-  function handleEndChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.value) setEnd(new Date(e.target.value + "T23:59:59"));
-  }
+  const grouped = data ? groupByDate(data.items) : [];
 
   return (
-    <div className="space-y-4">
-      {/* Filtro de período */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">De</label>
-          <input
-            type="date"
-            defaultValue={format(start, "yyyy-MM-dd")}
-            onChange={handleStartChange}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">até</label>
-          <input
-            type="date"
-            defaultValue={format(end, "yyyy-MM-dd")}
-            onChange={handleEndChange}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
+    <div className="space-y-5">
+      {/* Filtro */}
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-1 flex-wrap gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Período — início</label>
+            <input
+              type="date"
+              defaultValue={format(start, "yyyy-MM-dd")}
+              onChange={e => e.target.value && setStart(new Date(e.target.value + "T00:00:00"))}
+              className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Fim</label>
+            <input
+              type="date"
+              defaultValue={format(end, "yyyy-MM-dd")}
+              onChange={e => e.target.value && setEnd(new Date(e.target.value + "T23:59:59"))}
+              className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            />
+          </div>
         </div>
         {data && (
-          <span className="ml-auto text-sm text-gray-500">
-            {data.total} {data.total === 1 ? "registro" : "registros"}
+          <span className="rounded-xl bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-200">
+            {data.total} {data.total === 1 ? "marcação" : "marcações"}
           </span>
         )}
       </div>
 
-      {/* Tabela */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 text-gray-400">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
-          </div>
-        )}
+      {/* Estados */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+        </div>
+      )}
 
-        {isError && (
-          <div className="py-12 text-center text-sm text-red-500">
-            Erro ao carregar registros. Tente novamente.
-          </div>
-        )}
+      {isError && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 py-10 text-center text-sm text-red-500">
+          Erro ao carregar registros. Tente novamente.
+        </div>
+      )}
 
-        {data && data.items.length === 0 && (
-          <div className="py-12 text-center text-sm text-gray-400">
-            Nenhum registro no período selecionado.
+      {data && data.items.length === 0 && (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-200 py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
+            <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
           </div>
-        )}
+          <div>
+            <p className="text-sm font-semibold text-gray-600">Nenhum registro no período</p>
+            <p className="mt-0.5 text-xs text-gray-400">Ajuste as datas acima para consultar outro período.</p>
+          </div>
+        </div>
+      )}
 
-        {data && data.items.length > 0 && (
-          <div className="overflow-x-auto">
-          <table className="min-w-[460px] w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Hora</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Confiança</th>
-                <th className="px-4 py-3">Situação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.items.map((record) => (
-                <AttendanceRow key={record.id} record={record} />
-              ))}
-            </tbody>
-          </table>
-          </div>
-        )}
-      </div>
+      {/* Timeline agrupada por dia */}
+      {grouped.length > 0 && (
+        <div className="space-y-6">
+          {grouped.map(([dateKey, records]) => {
+            const ins  = records.filter(r => r.record_type === "IN").length;
+            const outs = records.filter(r => r.record_type === "OUT").length;
+            const dayStr = format(new Date(dateKey + "T00:00:00"), "yyyy-MM-dd");
+
+            return (
+              <div key={dateKey}>
+                {/* Cabeçalho do dia */}
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="shrink-0">
+                    <p className="text-sm font-bold capitalize text-gray-800">{dayLabel(dayStr)}</p>
+                    <p className="text-xs text-gray-400">
+                      {ins} entrada{ins !== 1 ? "s" : ""} · {outs} saída{outs !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="flex-1 border-t border-gray-100" />
+                </div>
+
+                {/* Cards do dia */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {records.map(record => (
+                    <RecordCard key={record.id} record={record} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-function AttendanceRow({ record }: { record: AttendanceRecord }) {
-  const date = new Date(record.recorded_at);
+// ─── Card de marcação ────────────────────────────────────────────────────────
+
+function RecordCard({ record }: { record: AttendanceRecord }) {
+  const dt   = new Date(record.recorded_at);
   const isIn = record.record_type === "IN";
 
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors">
-      <td className="px-4 py-3 text-gray-700 capitalize">
-        {format(date, "EEE, dd/MM/yyyy", { locale: ptBR })}
-      </td>
-      <td className="px-4 py-3 font-mono font-medium text-gray-900">
-        {format(date, "HH:mm:ss")}
-      </td>
-      <td className="px-4 py-3">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium
-            ${isIn
-              ? "bg-green-50 text-green-700 ring-1 ring-green-200"
-              : "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-            }`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${isIn ? "bg-green-500" : "bg-blue-500"}`} />
-          {isIn ? "Entrada" : "Saída"}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <ConfidenceBar value={record.facial_confidence} />
-      </td>
-      <td className="px-4 py-3">
-        {record.is_adjustment ? (
-          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
-            Ajuste
-          </span>
+    <div className={cn(
+      "flex items-center gap-4 rounded-2xl border px-4 py-3.5 transition-shadow hover:shadow-sm",
+      isIn
+        ? "border-green-100 bg-gradient-to-r from-green-50 to-white"
+        : "border-blue-100 bg-gradient-to-r from-blue-50 to-white"
+    )}>
+      {/* Ícone */}
+      <div className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+        isIn ? "bg-green-100" : "bg-blue-100"
+      )}>
+        {isIn ? (
+          <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
+          </svg>
         ) : (
-          <span className="text-xs text-gray-400">Original</span>
+          <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+          </svg>
         )}
-      </td>
-    </tr>
-  );
-}
-
-function ConfidenceBar({ value }: { value: number }) {
-  const pct = Math.round(value * 100);
-  const color = pct >= 85 ? "bg-green-500" : pct >= 70 ? "bg-amber-500" : "bg-red-500";
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-gray-500">{pct}%</span>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className={cn("text-sm font-semibold", isIn ? "text-green-700" : "text-blue-700")}>
+          {isIn ? "Entrada" : "Saída"}
+        </p>
+        {record.is_adjustment && (
+          <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+            </svg>
+            Registro ajustado
+          </span>
+        )}
+      </div>
+
+      {/* Horário */}
+      <div className="text-right shrink-0">
+        <p className="font-mono text-2xl font-bold tracking-tight text-gray-900">
+          {format(dt, "HH:mm")}
+        </p>
+        <p className="font-mono text-xs text-gray-400">{format(dt, "ss")}s</p>
+      </div>
     </div>
   );
 }
